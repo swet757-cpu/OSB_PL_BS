@@ -3,155 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weekly Planner</title>
+  <title>Compact Weekly Planner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="bg-orb orb-a"></div>
-  <div class="bg-orb orb-b"></div>
-
-  <main class="planner-app">
-    <header class="app-header panel">
-      <div>
-        <p class="kicker">Weekly Productivity</p>
+  <main class="app-shell">
+    <header class="panel header">
+      <div class="title-wrap">
+        <p class="kicker">Compact Planner</p>
         <h1>Недельный календарь</h1>
       </div>
-      <div class="week-nav" aria-label="Навигация по неделям">
-        <button id="prevWeek" class="ghost-btn" type="button">← Пред</button>
-        <button id="todayWeek" class="accent-btn" type="button">Текущая неделя</button>
-        <button id="nextWeek" class="ghost-btn" type="button">След →</button>
+
+      <div class="nav-wrap">
+        <div class="week-nav">
+          <button id="prevWeek" class="ghost-btn" type="button">←</button>
+          <button id="todayWeek" class="accent-btn" type="button">Сегодня</button>
+          <button id="nextWeek" class="ghost-btn" type="button">→</button>
+        </div>
         <p id="weekRange" class="week-range"></p>
       </div>
+
+      <aside class="stats-mini" aria-label="Статистика выполнения">
+        <div class="stats-row">
+          <strong id="statsPercent">0%</strong>
+          <span id="statsMeta">0 из 0</span>
+        </div>
+        <div class="mini-bar"><div id="statsFill" class="mini-fill"></div></div>
+        <div class="chips">
+          <span id="chipTodo" class="chip todo">Не начато: 0</span>
+          <span id="chipProgress" class="chip progress">В процессе: 0</span>
+          <span id="chipDone" class="chip done">Выполнено: 0</span>
+        </div>
+      </aside>
     </header>
 
-    <section class="top-layout">
-      <section class="panel task-panel">
-        <div class="section-head">
-          <h2>Добавить задачу</h2>
-          <p>Создавайте разовые и еженедельные задачи с точным временем.</p>
-        </div>
-
-        <form id="taskForm" class="task-form">
-          <label class="field field-wide">
-            <span>Название</span>
-            <input id="taskTitle" type="text" maxlength="120" placeholder="Например: Подготовка презентации" required />
-          </label>
-
-          <label class="field">
-            <span>День недели</span>
-            <select id="taskDay" required></select>
-          </label>
-
-          <label class="field">
-            <span>Цвет карточки</span>
-            <input id="taskColor" type="color" value="#3f8cff" />
-          </label>
-
-          <label class="field">
-            <span>Время начала</span>
-            <input id="taskStart" type="time" value="09:00" required />
-          </label>
-
-          <label class="field">
-            <span>Время окончания</span>
-            <input id="taskEnd" type="time" value="10:00" required />
-          </label>
-
-          <label class="field">
-            <span>Статус</span>
-            <select id="taskStatus" required>
-              <option value="todo">Не начато</option>
-              <option value="inprogress">В процессе</option>
-              <option value="done">Выполнено</option>
-            </select>
-          </label>
-
-          <label class="field field-wide">
-            <span>Описание</span>
-            <textarea id="taskDescription" rows="2" maxlength="240" placeholder="Короткое описание или заметка"></textarea>
-          </label>
-
-          <label class="toggle-row field-wide">
-            <input id="taskRepeat" type="checkbox" />
-            <span>Повторять каждую неделю</span>
-          </label>
-
-          <div class="field-wide form-actions">
-            <button class="accent-btn" type="submit">Добавить задачу</button>
-            <p id="formMessage" class="form-message" aria-live="polite"></p>
-          </div>
-        </form>
-      </section>
-
-      <section class="panel dashboard-panel">
-        <div class="section-head">
-          <h2>Дашборд недели</h2>
-          <p>Следите за прогрессом и нагрузкой по дням.</p>
-        </div>
-
-        <div class="metric-grid">
-          <article class="metric-card">
-            <p>Всего задач</p>
-            <strong id="totalTasks">0</strong>
-          </article>
-          <article class="metric-card">
-            <p>Выполнено</p>
-            <strong id="doneTasks">0</strong>
-          </article>
-          <article class="metric-card">
-            <p>Запланировано часов</p>
-            <strong id="plannedHours">0</strong>
-          </article>
-          <article class="metric-card">
-            <p>Пересечений по времени</p>
-            <strong id="overlapCount">0</strong>
-          </article>
-        </div>
-
-        <div class="progress-box">
-          <div class="progress-head">
-            <span>Прогресс недели</span>
-            <strong id="progressPercent">0%</strong>
-          </div>
-          <div class="progress-track" role="progressbar" aria-label="Выполнение задач">
-            <div id="progressFill" class="progress-fill"></div>
-          </div>
-          <p id="progressMeta" class="progress-meta">0 из 0 задач выполнено</p>
-        </div>
-
-        <div class="status-bars" aria-label="Распределение задач по статусам">
-          <div class="status-row">
-            <span>Не начато</span>
-            <div class="status-track"><div id="barTodo" class="status-fill todo"></div></div>
-            <b id="countTodo">0</b>
-          </div>
-          <div class="status-row">
-            <span>В процессе</span>
-            <div class="status-track"><div id="barProgress" class="status-fill progress"></div></div>
-            <b id="countProgress">0</b>
-          </div>
-          <div class="status-row">
-            <span>Выполнено</span>
-            <div class="status-track"><div id="barDone" class="status-fill done"></div></div>
-            <b id="countDone">0</b>
-          </div>
-        </div>
-
-        <p class="insight" id="busiestDay">Самый загруженный день: —</p>
-      </section>
+    <section class="panel quick-add">
+      <form id="taskForm" class="task-form">
+        <input id="taskTitle" type="text" maxlength="120" placeholder="Новая задача" required />
+        <select id="taskDay" required></select>
+        <select id="taskStatus" required>
+          <option value="todo">Не начато</option>
+          <option value="inprogress">В процессе</option>
+          <option value="done">Выполнено</option>
+        </select>
+        <input id="taskColor" type="color" value="#3f8cff" />
+        <label class="repeat-toggle">
+          <input id="taskRepeat" type="checkbox" />
+          <span>Еженедельно</span>
+        </label>
+        <button class="accent-btn add-btn" type="submit">Добавить</button>
+      </form>
+      <p id="formMessage" class="form-message" aria-live="polite"></p>
     </section>
 
-    <section class="panel calendar-shell">
-      <div class="section-head compact">
-        <h2>Сетка недели</h2>
-        <p>Задачи автоматически раскладываются рядом, если пересекаются по времени.</p>
-      </div>
-      <div class="calendar-scroll">
-        <div id="weekGrid" class="week-grid" aria-label="Недельный календарь"></div>
-      </div>
+    <section class="panel board-wrap">
+      <div id="weekBoard" class="week-board" aria-label="Неделя"></div>
     </section>
   </main>
 
