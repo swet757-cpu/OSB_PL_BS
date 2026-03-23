@@ -14,6 +14,9 @@ const addTaskBtn = document.getElementById("addTask");
 const prevWeekBtn = document.getElementById("prevWeek");
 const nextWeekBtn = document.getElementById("nextWeek");
 const taskTemplate = document.getElementById("taskTemplate");
+const progressPercent = document.getElementById("progressPercent");
+const progressFill = document.getElementById("progressFill");
+const progressMeta = document.getElementById("progressMeta");
 
 let dragInfo = null;
 
@@ -41,6 +44,7 @@ function init() {
 function render() {
   fillDaySelect();
   renderWeekLabel();
+  renderProgress();
   renderBoard();
 }
 
@@ -102,6 +106,23 @@ function renderBoard() {
     wireDropZone(dayCol, date);
     board.appendChild(dayCol);
   });
+}
+
+function renderProgress() {
+  const weekDates = getWeekDates(state.weekStart);
+  let total = 0;
+  let done = 0;
+
+  weekDates.forEach((date) => {
+    const tasks = state.tasksByDate[date] || [];
+    total += tasks.length;
+    done += tasks.filter((t) => t.done).length;
+  });
+
+  const percent = total ? Math.round((done / total) * 100) : 0;
+  progressPercent.textContent = `${percent}%`;
+  progressFill.style.width = `${percent}%`;
+  progressMeta.textContent = `${done} из ${total} задач выполнено`;
 }
 
 function createTaskEl(task, date) {
