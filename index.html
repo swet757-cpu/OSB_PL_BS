@@ -1,0 +1,53 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>План недели</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-glow bg-glow-one"></div>
+  <div class="bg-glow bg-glow-two"></div>
+
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Органайзер</p>
+        <h1>Календарь на неделю</h1>
+      </div>
+      <div class="week-nav">
+        <button id="prevWeek" aria-label="Предыдущая неделя">←</button>
+        <p id="weekRange"></p>
+        <button id="nextWeek" aria-label="Следующая неделя">→</button>
+      </div>
+    </header>
+
+    <section class="quick-add">
+      <input id="taskText" type="text" placeholder="Добавить задачу..." maxlength="140" />
+      <select id="daySelect"></select>
+      <button id="addTask">Добавить</button>
+    </section>
+
+    <section id="board" class="board"></section>
+  </main>
+
+  <template id="taskTemplate">
+    <article class="task" draggable="true">
+      <label class="task-main">
+        <input type="checkbox" class="task-check" />
+        <span class="task-title"></span>
+      </label>
+      <div class="task-actions">
+        <button class="move-btn" title="Перенести">↷</button>
+        <button class="delete-btn" title="Удалить">✕</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
