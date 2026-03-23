@@ -26,11 +26,13 @@ body {
   font-family: "Manrope", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 10% 10%, rgba(17, 100, 102, 0.16), transparent 36%),
-    radial-gradient(circle at 88% 84%, rgba(255, 209, 102, 0.22), transparent 42%),
-    linear-gradient(120deg, #edf4fb 0%, #f9f3e7 100%);
+    radial-gradient(circle at 12% 18%, rgba(255, 188, 215, 0.45), transparent 34%),
+    radial-gradient(circle at 85% 20%, rgba(255, 214, 230, 0.42), transparent 36%),
+    radial-gradient(circle at 18% 85%, rgba(248, 230, 255, 0.35), transparent 30%),
+    linear-gradient(145deg, #fff4f8 0%, #f9f2ff 36%, #eef6ff 100%);
   padding: 20px;
   overflow-x: hidden;
+  position: relative;
 }
 
 .bg-glow {
@@ -43,7 +45,7 @@ body {
 .bg-glow-one {
   width: 260px;
   height: 260px;
-  background: rgba(17, 100, 102, 0.28);
+  background: rgba(255, 173, 208, 0.38);
   top: -70px;
   right: -70px;
 }
@@ -51,9 +53,36 @@ body {
 .bg-glow-two {
   width: 320px;
   height: 320px;
-  background: rgba(255, 209, 102, 0.22);
+  background: rgba(255, 210, 228, 0.3);
   bottom: -100px;
   left: -100px;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::before {
+  background:
+    radial-gradient(12px 8px at 10% 22%, rgba(255, 170, 205, 0.35), transparent 70%),
+    radial-gradient(10px 7px at 24% 14%, rgba(255, 182, 214, 0.32), transparent 70%),
+    radial-gradient(11px 8px at 36% 28%, rgba(255, 160, 198, 0.3), transparent 70%),
+    radial-gradient(12px 8px at 52% 17%, rgba(255, 175, 209, 0.28), transparent 70%),
+    radial-gradient(10px 7px at 66% 23%, rgba(255, 193, 220, 0.35), transparent 70%),
+    radial-gradient(12px 8px at 78% 13%, rgba(255, 173, 205, 0.3), transparent 70%),
+    radial-gradient(10px 7px at 88% 27%, rgba(255, 194, 222, 0.32), transparent 70%);
+  opacity: 0.8;
+}
+
+body::after {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 40%),
+    radial-gradient(circle at 90% 82%, rgba(255, 255, 255, 0.25), transparent 35%);
 }
 
 .app {
