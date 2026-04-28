@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Dashboard Pro</title>
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="logo">
+          <span>F</span>
+          <div>
+            <strong>FINANCE SAAS</strong>
+            <small>Dashboard Pro</small>
+          </div>
+        </div>
+        <nav class="nav" aria-label="Разделы">
+          <button class="nav-item active" data-view="dds" type="button">ДДС</button>
+          <button class="nav-item" data-view="opiu" type="button">ОПиУ</button>
+          <button class="nav-item" data-view="charts" type="button">Графики</button>
+          <button class="nav-item" data-view="notes" type="button">Заметки</button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Универсальный финансовый дашборд</p>
+            <h1 id="pageTitle">ДДС</h1>
+          </div>
+          <form class="filters" id="filtersForm">
+            <label>
+              <span>Дата с</span>
+              <input id="dateFrom" name="dateFrom" type="date">
+            </label>
+            <label>
+              <span>Дата по</span>
+              <input id="dateTo" name="dateTo" type="date">
+            </label>
+            <label>
+              <span>Кошелек</span>
+              <select id="walletFilter" name="wallet">
+                <option value="">Все</option>
+              </select>
+            </label>
+            <label>
+              <span>Направление</span>
+              <select id="directionFilter" name="direction">
+                <option value="">Все</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">Обновить данные</button>
+          </form>
+        </header>
+
+        <div class="status-line">
+          <span id="statusText">Загрузка данных...</span>
+          <span id="loadedAt"></span>
+        </div>
+
+        <section class="view active" id="view-dds">
+          <div class="cards-grid" id="ddsCards"></div>
+          <div class="charts-grid">
+            <article class="panel chart-panel">
+              <header><h2>ДДС по датам</h2></header>
+              <canvas id="ddsLineChart"></canvas>
+            </article>
+            <article class="panel chart-panel">
+              <header><h2>Статьи ДДС</h2></header>
+              <canvas id="ddsArticleChart"></canvas>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-opiu">
+          <div class="cards-grid" id="opiuCards"></div>
+          <div class="charts-grid">
+            <article class="panel chart-panel">
+              <header><h2>ОПиУ</h2></header>
+              <canvas id="opiuBarChart"></canvas>
+            </article>
+            <article class="panel chart-panel">
+              <header><h2>Структура расходов</h2></header>
+              <canvas id="opiuExpenseDonut"></canvas>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-charts">
+          <div class="analytics-grid">
+            <article class="panel chart-panel"><header><h2>ДДС по месяцам</h2></header><canvas id="monthlyDdsChart"></canvas></article>
+            <article class="panel chart-panel"><header><h2>ОПиУ по месяцам</h2></header><canvas id="monthlyOpiuChart"></canvas></article>
+            <article class="panel chart-panel"><header><h2>Расходы ОПиУ по статьям</h2></header><canvas id="expenseStructureChart"></canvas></article>
+            <article class="panel chart-panel"><header><h2>Списания ДДС по статьям</h2></header><canvas id="ddsOutcomeStructureChart"></canvas></article>
+            <article class="panel chart-panel wide"><header><h2>Чистый денежный поток</h2></header><canvas id="netFlowChart"></canvas></article>
+          </div>
+        </section>
+
+        <section class="view" id="view-notes">
+          <div class="notes-layout">
+            <article class="panel">
+              <header><h2>Добавить заметку</h2></header>
+              <form class="note-form" id="noteForm">
+                <label><span>Дата</span><input id="noteDate" type="date" required></label>
+                <label>
+                  <span>Раздел</span>
+                  <select id="noteSection">
+                    <option value="ДДС">ДДС</option>
+                    <option value="ОПиУ">ОПиУ</option>
+                    <option value="Графики">Графики</option>
+                    <option value="Заметки">Заметки</option>
+                  </select>
+                </label>
+                <label><span>Текст заметки</span><textarea id="noteText" rows="5" required></textarea></label>
+                <button class="primary-button" type="submit">Сохранить заметку</button>
+              </form>
+            </article>
+            <article class="panel">
+              <header><h2>Заметки из Google Sheets</h2></header>
+              <div class="notes-list" id="notesList"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <?!= include('JavaScript'); ?>
+  </body>
+</html>

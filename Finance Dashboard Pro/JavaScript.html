@@ -1,0 +1,337 @@
+<script>
+  const app = {
+    view: 'dds',
+    data: null,
+    charts: {},
+  };
+
+  const viewTitles = {
+    dds: 'ДДС',
+    opiu: 'ОПиУ',
+    charts: 'Графики',
+    notes: 'Заметки',
+  };
+
+  const els = {
+    pageTitle: document.querySelector('#pageTitle'),
+    statusText: document.querySelector('#statusText'),
+    loadedAt: document.querySelector('#loadedAt'),
+    statusLine: document.querySelector('.status-line'),
+    filtersForm: document.querySelector('#filtersForm'),
+    dateFrom: document.querySelector('#dateFrom'),
+    dateTo: document.querySelector('#dateTo'),
+    walletFilter: document.querySelector('#walletFilter'),
+    directionFilter: document.querySelector('#directionFilter'),
+    ddsCards: document.querySelector('#ddsCards'),
+    opiuCards: document.querySelector('#opiuCards'),
+    notesList: document.querySelector('#notesList'),
+    noteForm: document.querySelector('#noteForm'),
+    noteDate: document.querySelector('#noteDate'),
+    noteSection: document.querySelector('#noteSection'),
+    noteText: document.querySelector('#noteText'),
+  };
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  function init() {
+    els.noteDate.value = toInputDate(new Date());
+    bindEvents();
+    loadData();
+  }
+
+  function bindEvents() {
+    document.querySelectorAll('.nav-item').forEach((button) => {
+      button.addEventListener('click', () => setView(button.dataset.view));
+    });
+
+    els.filtersForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      loadData();
+    });
+
+    els.noteForm.addEventListener('submit', onAddNote);
+  }
+
+  function setView(view) {
+    app.view = view;
+    els.pageTitle.textContent = viewTitles[view];
+    document.querySelectorAll('.nav-item').forEach((button) => {
+      button.classList.toggle('active', button.dataset.view === view);
+    });
+    document.querySelectorAll('.view').forEach((section) => {
+      section.classList.toggle('active', section.id === `view-${view}`);
+    });
+  }
+
+  function loadData() {
+    setLoading(true);
+    google.script.run
+      .withSuccessHandler((response) => {
+        setLoading(false);
+        if (!response || !response.ok) {
+          showError(response && response.error ? response.error : 'Не удалось загрузить данные');
+          return;
+        }
+        app.data = response;
+        render(response);
+      })
+      .withFailureHandler((error) => {
+        setLoading(false);
+        showError(error && error.message ? error.message : 'Ошибка связи с Google Apps Script');
+      })
+      .getDashboardData(getFilters());
+  }
+
+  function onAddNote(event) {
+    event.preventDefault();
+    const button = els.noteForm.querySelector('button');
+    button.disabled = true;
+    google.script.run
+      .withSuccessHandler((response) => {
+        button.disabled = false;
+        if (!response || !response.ok) {
+          showError(response && response.error ? response.error : 'Не удалось сохранить заметку');
+          return;
+        }
+        els.noteText.value = '';
+        loadData();
+      })
+      .withFailureHandler((error) => {
+        button.disabled = false;
+        showError(error && error.message ? error.message : 'Не удалось сохранить заметку');
+      })
+      .addNote({
+        date: els.noteDate.value,
+        section: els.noteSection.value,
+        text: els.noteText.value,
+      });
+  }
+
+  function getFilters() {
+    return {
+      dateFrom: els.dateFrom.value,
+      dateTo: els.dateTo.value,
+      wallet: els.walletFilter.value,
+      direction: els.directionFilter.value,
+    };
+  }
+
+  function render(data) {
+    els.statusLine.classList.remove('error');
+    els.statusText.textContent = data.hasData ? `Операций за период: ${data.meta.filteredRows}` : data.message;
+    els.loadedAt.textContent = `Обновлено: ${data.meta.loadedAt}`;
+    renderFilterOptions(data.filters);
+    renderCards();
+    renderNotes(data.notes);
+    renderCharts();
+  }
+
+  function renderFilterOptions(options) {
+    fillSelect(els.walletFilter, options.wallets, app.data.selectedFilters.wallet);
+    fillSelect(els.directionFilter, options.directions, app.data.selectedFilters.direction);
+  }
+
+  function fillSelect(select, values, selected) {
+    const label = select.id === 'walletFilter' ? 'Все кошельки' : 'Все направления';
+    select.innerHTML = `<option value="">${label}</option>`;
+    values.forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      option.selected = value === selected;
+      select.append(option);
+    });
+  }
+
+  function renderCards() {
+    const dds = app.data.dds.cards;
+    els.ddsCards.innerHTML = [
+      metricCard('Поступления', money(dds.income), 'Сумма с НДС'),
+      metricCard('Списания', money(dds.outcome), 'Сумма с НДС'),
+      metricCard('Чистый денежный поток', money(dds.netFlow), 'Поступления минус списания'),
+      metricCard('Количество операций', number(dds.operationsCount), 'Строки ДДС'),
+    ].join('');
+
+    const opiu = app.data.opiu.cards;
+    els.opiuCards.innerHTML = [
+      metricCard('Выручка', money(opiu.revenue), 'Сумма без НДС'),
+      metricCard('Расходы', money(opiu.expenses), 'Сумма без НДС'),
+      metricCard('Прибыль', money(opiu.profit), 'Выручка минус расходы'),
+      metricCard('Рентабельность', percent(opiu.margin), 'Прибыль / выручка'),
+    ].join('');
+  }
+
+  function metricCard(title, value, hint) {
+    return `<article class="metric-card"><span>${escapeHtml(title)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(hint)}</small></article>`;
+  }
+
+  function renderNotes(notes) {
+    if (!notes.length) {
+      els.notesList.innerHTML = '<div class="empty-state">Заметок за выбранный период нет</div>';
+      return;
+    }
+    els.notesList.innerHTML = notes.map((note) => `
+      <article class="note-item">
+        <header>
+          <span>${escapeHtml(note.date)} · <strong>${escapeHtml(note.section || 'Без раздела')}</strong></span>
+          <span>${escapeHtml(note.author || '')}</span>
+        </header>
+        <p>${escapeHtml(note.text)}</p>
+      </article>
+    `).join('');
+  }
+
+  function renderCharts() {
+    const dds = app.data.dds;
+    const opiu = app.data.opiu;
+    const charts = app.data.charts;
+
+    drawLine('ddsLineChart', dds.byDate.map((item) => item.label), [
+      dataset('Поступления', dds.byDate.map((item) => item.income), '#16a34a'),
+      dataset('Списания', dds.byDate.map((item) => item.outcome), '#dc2626'),
+      dataset('Чистый поток', dds.byDate.map((item) => item.netFlow), '#f97316'),
+    ]);
+
+    drawBar('ddsArticleChart', dds.byArticle.map((item) => item.label), [
+      dataset('Поступления', dds.byArticle.map((item) => item.income), '#16a34a'),
+      dataset('Списания', dds.byArticle.map((item) => item.outcome), '#dc2626'),
+    ]);
+
+    drawBar('opiuBarChart', opiu.bar.map((item) => item.label), [
+      dataset('ОПиУ', opiu.bar.map((item) => item.value), '#f97316'),
+    ]);
+
+    drawDoughnut('opiuExpenseDonut', opiu.expensesByArticle);
+    drawBar('monthlyDdsChart', charts.ddsByMonth.map((item) => item.label), [
+      dataset('Поступления', charts.ddsByMonth.map((item) => item.income), '#16a34a'),
+      dataset('Списания', charts.ddsByMonth.map((item) => item.outcome), '#dc2626'),
+    ]);
+    drawBar('monthlyOpiuChart', charts.opiuByMonth.map((item) => item.label), [
+      dataset('Выручка', charts.opiuByMonth.map((item) => item.revenue), '#2563eb'),
+      dataset('Расходы', charts.opiuByMonth.map((item) => item.expenses), '#dc2626'),
+      dataset('Прибыль', charts.opiuByMonth.map((item) => item.profit), '#f97316'),
+    ]);
+    drawDoughnut('expenseStructureChart', charts.opiuExpensesByArticle);
+    drawDoughnut('ddsOutcomeStructureChart', charts.ddsOutcomeByArticle);
+    drawLine('netFlowChart', charts.netFlowTrend.map((item) => item.label), [
+      dataset('Чистый поток', charts.netFlowTrend.map((item) => item.value), '#f97316'),
+    ]);
+  }
+
+  function dataset(label, values, color) {
+    return {
+      label,
+      data: values,
+      borderColor: color,
+      backgroundColor: color,
+      borderWidth: 2,
+      tension: 0.32,
+    };
+  }
+
+  function drawLine(id, labels, datasets) {
+    drawChart(id, 'line', labels, datasets);
+  }
+
+  function drawBar(id, labels, datasets) {
+    drawChart(id, 'bar', labels, datasets);
+  }
+
+  function drawChart(id, type, labels, datasets) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    destroyChart(id);
+    app.charts[id] = new Chart(ctx, {
+      type,
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: (item) => `${item.dataset.label}: ${money(item.raw)}` } },
+        },
+        scales: type === 'bar' || type === 'line' ? {
+          y: { ticks: { callback: (value) => compactMoney(value) }, grid: { color: '#edf0f4' } },
+          x: { grid: { display: false } },
+        } : {},
+      },
+    });
+  }
+
+  function drawDoughnut(id, items) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    destroyChart(id);
+    const colors = ['#f97316', '#2563eb', '#16a34a', '#eab308', '#dc2626', '#7c3aed', '#0891b2', '#64748b'];
+    app.charts[id] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: items.map((item) => item.label),
+        datasets: [{ data: items.map((item) => item.value), backgroundColor: items.map((_, index) => colors[index % colors.length]) }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: (item) => `${item.label}: ${money(item.raw)}` } },
+        },
+        cutout: '62%',
+      },
+    });
+  }
+
+  function destroyChart(id) {
+    if (app.charts[id]) {
+      app.charts[id].destroy();
+      delete app.charts[id];
+    }
+  }
+
+  function setLoading(isLoading) {
+    const button = els.filtersForm.querySelector('button');
+    button.disabled = isLoading;
+    if (isLoading) {
+      els.statusLine.classList.remove('error');
+      els.statusText.textContent = 'Загрузка данных...';
+      els.loadedAt.textContent = '';
+    }
+  }
+
+  function showError(message) {
+    els.statusLine.classList.add('error');
+    els.statusText.textContent = message;
+    els.loadedAt.textContent = '';
+  }
+
+  function money(value) {
+    return `${number(value)} ₽`;
+  }
+
+  function compactMoney(value) {
+    return new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  }
+
+  function number(value) {
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Number(value) || 0);
+  }
+
+  function percent(value) {
+    return `${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value) || 0)}%`;
+  }
+
+  function toInputDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (char) => {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return map[char];
+    });
+  }
+</script>
