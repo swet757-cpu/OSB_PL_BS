@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Календарь финансиста</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M10 34V16a4 4 0 0 1 4-4h20a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4Z" />
+              <path d="M16 22h16M16 28h10M18 12v-4M30 12v-4" />
+            </svg>
+          </div>
+          <div>
+            <p>Рабочий календарь</p>
+            <h1>Финансы</h1>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Быстро добавить</h2>
+          </div>
+          <form class="quick-form" id="taskForm">
+            <label>
+              <span>Задача</span>
+              <input id="taskTitle" name="title" type="text" placeholder="Например: сверить платежи" required />
+            </label>
+            <div class="form-row">
+              <label>
+                <span>Дата</span>
+                <input id="taskDate" name="date" type="date" required />
+              </label>
+              <label>
+                <span>Время</span>
+                <input id="taskTime" name="time" type="time" required />
+              </label>
+            </div>
+            <label>
+              <span>Тип</span>
+              <select id="taskType" name="type">
+                <option value="payments">Платежи</option>
+                <option value="reports">Отчеты</option>
+                <option value="taxes">Налоги</option>
+                <option value="calls">Звонки</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">Добавить</button>
+          </form>
+        </section>
+
+        <section class="panel mini-panel" aria-label="Месячный календарь">
+          <div class="panel-title">
+            <button class="icon-button" id="prevMonth" type="button" aria-label="Предыдущий месяц">‹</button>
+            <h2 id="monthTitle">Месяц</h2>
+            <button class="icon-button" id="nextMonth" type="button" aria-label="Следующий месяц">›</button>
+          </div>
+          <div class="weekdays">
+            <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+          </div>
+          <div class="mini-calendar" id="miniCalendar"></div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p>Две недели</p>
+            <h2 id="boardTitle">План работ</h2>
+          </div>
+          <div class="toolbar">
+            <button id="todayButton" type="button">Сегодня</button>
+            <div class="compact-result" aria-label="Результат выполнения">
+              <strong id="progressText">0%</strong>
+              <span><b id="doneCount">0</b> готово</span>
+              <span><b id="openCount">0</b> в работе</span>
+              <span><b id="todayCount">0</b> сегодня</span>
+            </div>
+            <button id="prevRange" class="icon-button wide" type="button" aria-label="Предыдущие две недели">‹</button>
+            <button id="nextRange" class="icon-button wide" type="button" aria-label="Следующие две недели">›</button>
+          </div>
+        </header>
+
+        <div class="legend" aria-label="Типы задач">
+          <span><i class="dot payments"></i>Платежи</span>
+          <span><i class="dot reports"></i>Отчеты</span>
+          <span><i class="dot taxes"></i>Налоги</span>
+          <span><i class="dot calls"></i>Звонки</span>
+        </div>
+
+        <div class="board" id="board" aria-label="Календарь задач на две недели"></div>
+      </section>
+    </main>
+
+    <dialog class="task-dialog" id="taskDialog">
+      <form method="dialog" id="editForm">
+        <div class="dialog-head">
+          <h2>Задача</h2>
+          <button class="icon-button" value="cancel" type="submit" aria-label="Закрыть">×</button>
+        </div>
+        <input id="editId" type="hidden" />
+        <label>
+          <span>Название</span>
+          <input id="editTitle" type="text" required />
+        </label>
+        <div class="form-row">
+          <label>
+            <span>Дата</span>
+            <input id="editDate" type="date" required />
+          </label>
+          <label>
+            <span>Время</span>
+            <input id="editTime" type="time" required />
+          </label>
+        </div>
+        <label>
+          <span>Тип</span>
+          <select id="editType">
+            <option value="payments">Платежи</option>
+            <option value="reports">Отчеты</option>
+            <option value="taxes">Налоги</option>
+            <option value="calls">Звонки</option>
+          </select>
+        </label>
+        <label>
+          <span>Заметка</span>
+          <textarea id="editNote" rows="3" placeholder="Сумма, контрагент, важные детали"></textarea>
+        </label>
+        <label class="check-line">
+          <input id="editDone" type="checkbox" />
+          <span>Выполнено</span>
+        </label>
+        <div class="dialog-actions">
+          <button id="deleteTask" class="danger-button" type="button">Удалить</button>
+          <button class="primary-button" value="save" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="script.js"></script>
+  </body>
+</html>
