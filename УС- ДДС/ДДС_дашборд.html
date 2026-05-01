@@ -1,0 +1,309 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дашборд ДДС</title>
+<style>
+:root{--bg:#f5f7fa;--panel:#fff;--ink:#202733;--muted:#687385;--line:#d9e0ea;--green:#18805b;--red:#bd3b3b;--blue:#255f99;--amber:#a66b00}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.35 "Segoe UI",Arial,sans-serif}main{max-width:1320px;margin:0 auto;padding:18px}
+.top{display:flex;justify-content:space-between;gap:14px;align-items:flex-end;margin-bottom:10px}h1{font-size:26px;line-height:1.1;margin:0 0 4px}.muted{color:var(--muted)}
+.panel,.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px}.panel{padding:12px;min-width:0}.panel h2{font-size:14px;margin:0 0 9px}.grid{display:grid;gap:10px}
+.filters{grid-template-columns:1fr 1fr;margin-bottom:10px}.filter-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:3px}input{width:100%;height:32px;border:1px solid var(--line);border-radius:6px;padding:0 8px;background:#fff;color:var(--ink)}
+button{height:32px;border:1px solid #b9c5d4;border-radius:6px;background:#eef3f8;color:#1f334a;padding:0 10px;cursor:pointer}button:hover{background:#e4edf6}.primary{background:#dff3e9;border-color:#9bd2ba}.danger{background:#f8e7e7;border-color:#deb1b1}
+.entry-row{display:grid;grid-template-columns:140px 150px 1fr 150px auto;gap:8px;align-items:end}.entry-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.added-box{max-height:120px;overflow:auto;margin-top:8px;border-top:1px solid var(--line)}
+.kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:10px}.kpi{padding:10px 12px}.kpi span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em}.kpi b{display:block;margin-top:4px;font-size:18px;white-space:nowrap}.pos{color:var(--green)}.neg{color:var(--red)}
+.compare{grid-template-columns:1fr 1fr 1fr;margin-bottom:10px}.compare-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.compare-cell{border-left:3px solid var(--line);padding-left:8px;min-width:0}.compare-cell span{display:block;color:var(--muted);font-size:11px}.compare-cell b{display:block;font-size:16px;margin-top:2px;white-space:nowrap}.compare-cell.diff{border-left-color:var(--blue)}.charts{grid-template-columns:1.35fr 1fr}.two{grid-template-columns:1fr 1fr;margin-top:10px}
+canvas{width:100%;height:240px;display:block}.two canvas{height:230px}table{width:100%;border-collapse:collapse}td,th{padding:6px 7px;border-bottom:1px solid #edf1f5;text-align:left;vertical-align:top}th{color:var(--muted);font-weight:600}.num{text-align:right;white-space:nowrap}.note{font-size:11px;color:var(--muted);margin-top:8px}
+@media (max-width:940px){main{padding:14px}.top{display:block}.filters,.filter-row,.entry-row,.kpis,.compare,.charts,.two{grid-template-columns:1fr}.kpi b{font-size:17px}.compare-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <section class="top">
+    <div>
+      <h1>Дашборд ДДС</h1>
+      <div class="muted" id="periodText">Расчет включает начальный остаток.</div>
+    </div>
+    <div class="muted">Источник: База_операций</div>
+  </section>
+
+  <section class="grid filters">
+    <div class="panel">
+      <h2>Период 1</h2>
+      <div class="filter-row">
+        <div class="field"><label>Начало</label><input id="p1Start" type="date"></div>
+        <div class="field"><label>Конец</label><input id="p1End" type="date"></div>
+        <button id="allPeriod">Весь период</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Период 2 для сравнения</h2>
+      <div class="filter-row">
+        <div class="field"><label>Начало</label><input id="p2Start" type="date"></div>
+        <div class="field"><label>Конец</label><input id="p2End" type="date"></div>
+        <button id="prevPeriod">Предыдущий</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-bottom:10px">
+    <h2>Добавить операцию</h2>
+    <div class="entry-row">
+      <div class="field"><label>Дата</label><input id="newDate" type="date"></div>
+      <div class="field"><label>Операция</label><input id="newOperation" list="operationList" value="Поступление"></div>
+      <div class="field"><label>Статья</label><input id="newArticle" list="articleList" placeholder="Например: Оплата от покупателя"></div>
+      <div class="field"><label>Сумма</label><input id="newAmount" inputmode="decimal" placeholder="0,00"></div>
+      <button class="primary" id="addOperation">Добавить</button>
+    </div>
+    <datalist id="operationList"><option value="Поступление"><option value="Списание"></datalist>
+    <datalist id="articleList"></datalist>
+    <div class="entry-actions">
+      <button id="refreshDashboard">Обновить дашборд</button>
+      <button id="exportAdded">Скачать добавленные строки CSV</button>
+      <button class="danger" id="clearAdded">Очистить добавленные</button>
+      <span class="muted" id="addedCount">Добавлено: 0</span>
+    </div>
+    <div class="added-box">
+      <table><thead><tr><th>Дата</th><th>Операция</th><th>Статья</th><th class="num">Сумма</th></tr></thead><tbody id="addedRows"></tbody></table>
+    </div>
+  </section>
+
+  <section class="grid kpis">
+    <div class="kpi"><span>Остаток на начало периода</span><b id="kStart">0</b></div>
+    <div class="kpi"><span>Поступления</span><b id="kIn" class="pos">0</b></div>
+    <div class="kpi"><span>Списания</span><b id="kOut" class="neg">0</b></div>
+    <div class="kpi"><span>Чистый поток</span><b id="kNet">0</b></div>
+    <div class="kpi"><span>Остаток на конец периода</span><b id="kEnd">0</b></div>
+  </section>
+
+  <section class="grid compare">
+    <div class="panel">
+      <h2>Поступления</h2>
+      <div class="compare-grid">
+        <div class="compare-cell"><span>Период 1</span><b class="pos" id="cInP1">0</b></div>
+        <div class="compare-cell"><span>Период 2</span><b id="cInP2">0</b></div>
+        <div class="compare-cell diff"><span>Разница</span><b id="cInDelta">0</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Списания</h2>
+      <div class="compare-grid">
+        <div class="compare-cell"><span>Период 1</span><b class="neg" id="cOutP1">0</b></div>
+        <div class="compare-cell"><span>Период 2</span><b id="cOutP2">0</b></div>
+        <div class="compare-cell diff"><span>Разница</span><b id="cOutDelta">0</b></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Чистый поток</h2>
+      <div class="compare-grid">
+        <div class="compare-cell"><span>Период 1</span><b id="cNetP1">0</b></div>
+        <div class="compare-cell"><span>Период 2</span><b id="cNetP2">0</b></div>
+        <div class="compare-cell diff"><span>Разница</span><b id="cNetDelta">0</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid charts">
+    <div class="panel"><h2>Остаток денежных средств по дням</h2><canvas id="balanceChart"></canvas></div>
+    <div class="panel"><h2>Поступления и списания</h2><canvas id="flowChart"></canvas></div>
+  </section>
+
+  <section class="grid two">
+    <div class="panel">
+      <h2>Статьи поступлений</h2>
+      <canvas id="incomeChart"></canvas>
+      <table><thead><tr><th>Статья</th><th class="num">Сумма</th></tr></thead><tbody id="incomeRows"></tbody></table>
+    </div>
+    <div class="panel">
+      <h2>Статьи затрат</h2>
+      <canvas id="expenseChart"></canvas>
+      <table><thead><tr><th>Статья</th><th class="num">Сумма</th></tr></thead><tbody id="expenseRows"></tbody></table>
+      <div class="note">Слева показаны поступления, справа статьи затрат. Таблицы и графики пересчитываются по периоду 1.</div>
+    </div>
+  </section>
+</main>
+<script>
+const report = {"initialBalance":1296288.48,"operations":[{"date":"2026-04-01","operation":"Поступление","article":"Оплата от покупателя","inflow":13795,"outflow":0,"net":13795},{"date":"2026-04-01","operation":"Поступление","article":"Оплата от покупателя","inflow":136955,"outflow":0,"net":136955},{"date":"2026-04-01","operation":"Поступление","article":"Оплата от покупателя","inflow":31440,"outflow":0,"net":31440},{"date":"2026-04-01","operation":"Поступление","article":"Оплата от покупателя","inflow":13622,"outflow":0,"net":13622},{"date":"2026-04-01","operation":"Поступление","article":"перевод со счета на счет","inflow":2069.25,"outflow":0,"net":2069.25},{"date":"2026-04-01","operation":"Поступление","article":"перевод со счета на счет","inflow":20543.25,"outflow":0,"net":20543.25},{"date":"2026-04-01","operation":"Поступление","article":"перевод со счета на счет","inflow":4716,"outflow":0,"net":4716},{"date":"2026-04-01","operation":"Поступление","article":"перевод со счета на счет","inflow":2043.3,"outflow":0,"net":2043.3},{"date":"2026-04-01","operation":"Поступление","article":"Эквайринг","inflow":71636.58,"outflow":0,"net":71636.58},{"date":"2026-04-01","operation":"Списание","article":"Возврат кредита банку","inflow":0,"outflow":117530.76,"net":-117530.76},{"date":"2026-04-01","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":481.78,"net":-481.78},{"date":"2026-04-01","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2043.3,"net":-2043.3},{"date":"2026-04-01","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2069.25,"net":-2069.25},{"date":"2026-04-01","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":4716,"net":-4716},{"date":"2026-04-01","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":20543.25,"net":-20543.25},{"date":"2026-04-01","operation":"Списание","article":"транспортно-экспедиционные услуги","inflow":0,"outflow":912.2,"net":-912.2},{"date":"2026-04-02","operation":"Поступление","article":"Оплата от покупателя","inflow":53741.5,"outflow":0,"net":53741.5},{"date":"2026-04-02","operation":"Поступление","article":"Оплата от покупателя","inflow":94450,"outflow":0,"net":94450},{"date":"2026-04-02","operation":"Поступление","article":"перевод со счета на счет","inflow":14167.5,"outflow":0,"net":14167.5},{"date":"2026-04-02","operation":"Поступление","article":"перевод со счета на счет","inflow":8061.22,"outflow":0,"net":8061.22},{"date":"2026-04-02","operation":"Поступление","article":"Эквайринг","inflow":5120.48,"outflow":0,"net":5120.48},{"date":"2026-04-02","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":6879.7,"net":-6879.7},{"date":"2026-04-02","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":2407.68,"net":-2407.68},{"date":"2026-04-02","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":8061.22,"net":-8061.22},{"date":"2026-04-02","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":14167.5,"net":-14167.5},{"date":"2026-04-02","operation":"Списание","article":"Подотчет","inflow":0,"outflow":650,"net":-650},{"date":"2026-04-02","operation":"Списание","article":"Программное обеспечение, Каталоги, Лицензии","inflow":0,"outflow":18900,"net":-18900},{"date":"2026-04-02","operation":"Списание","article":"Услуги связи","inflow":0,"outflow":3173.14,"net":-3173.14},{"date":"2026-04-03","operation":"Поступление","article":"Оплата от покупателя","inflow":14112,"outflow":0,"net":14112},{"date":"2026-04-03","operation":"Поступление","article":"перевод со счета на счет","inflow":2116.8,"outflow":0,"net":2116.8},{"date":"2026-04-03","operation":"Поступление","article":"Эквайринг","inflow":2163.92,"outflow":0,"net":2163.92},{"date":"2026-04-03","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":963.56,"net":-963.56},{"date":"2026-04-03","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":35775,"net":-35775},{"date":"2026-04-03","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2116.8,"net":-2116.8},{"date":"2026-04-03","operation":"Списание","article":"упаковка","inflow":0,"outflow":40122,"net":-40122},{"date":"2026-04-05","operation":"Списание","article":"Подотчет","inflow":0,"outflow":1888.2,"net":-1888.2},{"date":"2026-04-06","operation":"Поступление","article":"Выплата процентов по депозиту","inflow":37838.9,"outflow":0,"net":37838.9},{"date":"2026-04-06","operation":"Поступление","article":"Депозит","inflow":4000000,"outflow":0,"net":4000000},{"date":"2026-04-06","operation":"Поступление","article":"Оплата от покупателя","inflow":8710,"outflow":0,"net":8710},{"date":"2026-04-06","operation":"Поступление","article":"Оплата от покупателя","inflow":240900,"outflow":0,"net":240900},{"date":"2026-04-06","operation":"Поступление","article":"Оплата от покупателя","inflow":18335,"outflow":0,"net":18335},{"date":"2026-04-06","operation":"Поступление","article":"Оплата от покупателя","inflow":6450,"outflow":0,"net":6450},{"date":"2026-04-06","operation":"Поступление","article":"Оплата от покупателя","inflow":5250,"outflow":0,"net":5250},{"date":"2026-04-06","operation":"Поступление","article":"перевод со счета на счет","inflow":787.5,"outflow":0,"net":787.5},{"date":"2026-04-06","operation":"Поступление","article":"перевод со счета на счет","inflow":36135,"outflow":0,"net":36135},{"date":"2026-04-06","operation":"Поступление","article":"перевод со счета на счет","inflow":967.5,"outflow":0,"net":967.5},{"date":"2026-04-06","operation":"Поступление","article":"перевод со счета на счет","inflow":2750.25,"outflow":0,"net":2750.25},{"date":"2026-04-06","operation":"Поступление","article":"перевод со счета на счет","inflow":1306.5,"outflow":0,"net":1306.5},{"date":"2026-04-06","operation":"Поступление","article":"Эквайринг","inflow":6506.36,"outflow":0,"net":6506.36},{"date":"2026-04-06","operation":"Списание","article":"Депозит","inflow":0,"outflow":4000000,"net":-4000000},{"date":"2026-04-06","operation":"Списание","article":"Комиссия банка","inflow":0,"outflow":2500,"net":-2500},{"date":"2026-04-06","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":244.37,"net":-244.37},{"date":"2026-04-06","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":61160,"net":-61160},{"date":"2026-04-06","operation":"Списание","article":"Налоги на персонал","inflow":0,"outflow":59770,"net":-59770},{"date":"2026-04-06","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":967.5,"net":-967.5},{"date":"2026-04-06","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":36135,"net":-36135},{"date":"2026-04-06","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2750.25,"net":-2750.25},{"date":"2026-04-06","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":787.5,"net":-787.5},{"date":"2026-04-06","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1306.5,"net":-1306.5},{"date":"2026-04-06","operation":"Списание","article":"Перечисление дивидендов","inflow":0,"outflow":200000,"net":-200000},{"date":"2026-04-06","operation":"Списание","article":"Перечисление дивидендов","inflow":0,"outflow":200000,"net":-200000},{"date":"2026-04-06","operation":"Списание","article":"Товар","inflow":0,"outflow":7740,"net":-7740},{"date":"2026-04-06","operation":"Списание","article":"транспортно-экспедиционные услуги","inflow":0,"outflow":3.85,"net":-3.85},{"date":"2026-04-06","operation":"Списание","article":"Услуги связи","inflow":0,"outflow":7438.71,"net":-7438.71},{"date":"2026-04-07","operation":"Поступление","article":"Оплата от покупателя","inflow":160711,"outflow":0,"net":160711},{"date":"2026-04-07","operation":"Поступление","article":"Оплата от покупателя","inflow":7600,"outflow":0,"net":7600},{"date":"2026-04-07","operation":"Поступление","article":"Оплата от покупателя","inflow":6600,"outflow":0,"net":6600},{"date":"2026-04-07","operation":"Поступление","article":"перевод со счета на счет","inflow":990,"outflow":0,"net":990},{"date":"2026-04-07","operation":"Поступление","article":"перевод со счета на счет","inflow":1140,"outflow":0,"net":1140},{"date":"2026-04-07","operation":"Поступление","article":"перевод со счета на счет","inflow":24106.65,"outflow":0,"net":24106.65},{"date":"2026-04-07","operation":"Поступление","article":"Эквайринг","inflow":4959.99,"outflow":0,"net":4959.99},{"date":"2026-04-07","operation":"Списание","article":"Госпошлины, штрафы","inflow":0,"outflow":1125,"net":-1125},{"date":"2026-04-07","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":3500,"net":-3500},{"date":"2026-04-07","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":24106.65,"net":-24106.65},{"date":"2026-04-07","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1140,"net":-1140},{"date":"2026-04-07","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":990,"net":-990},{"date":"2026-04-08","operation":"Поступление","article":"Оплата от покупателя","inflow":30660,"outflow":0,"net":30660},{"date":"2026-04-08","operation":"Поступление","article":"Оплата от покупателя","inflow":3024,"outflow":0,"net":3024},{"date":"2026-04-08","operation":"Поступление","article":"Оплата от покупателя","inflow":162680,"outflow":0,"net":162680},{"date":"2026-04-08","operation":"Поступление","article":"Оплата от покупателя","inflow":9000,"outflow":0,"net":9000},{"date":"2026-04-08","operation":"Поступление","article":"перевод со счета на счет","inflow":940,"outflow":0,"net":940},{"date":"2026-04-08","operation":"Поступление","article":"перевод со счета на счет","inflow":4599,"outflow":0,"net":4599},{"date":"2026-04-08","operation":"Поступление","article":"перевод со счета на счет","inflow":1350,"outflow":0,"net":1350},{"date":"2026-04-08","operation":"Поступление","article":"перевод со счета на счет","inflow":453.6,"outflow":0,"net":453.6},{"date":"2026-04-08","operation":"Поступление","article":"перевод со счета на счет","inflow":24402,"outflow":0,"net":24402},{"date":"2026-04-08","operation":"Поступление","article":"Эквайринг","inflow":1021.16,"outflow":0,"net":1021.16},{"date":"2026-04-08","operation":"Списание","article":"Курьерская доставка","inflow":0,"outflow":695.4,"net":-695.4},{"date":"2026-04-08","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":92167.68,"net":-92167.68},{"date":"2026-04-08","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1350,"net":-1350},{"date":"2026-04-08","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":453.6,"net":-453.6},{"date":"2026-04-08","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":4599,"net":-4599},{"date":"2026-04-08","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":24402,"net":-24402},{"date":"2026-04-08","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":940,"net":-940},{"date":"2026-04-08","operation":"Списание","article":"услуги печати","inflow":0,"outflow":7000,"net":-7000},{"date":"2026-04-09","operation":"Поступление","article":"Оплата от покупателя","inflow":40805,"outflow":0,"net":40805},{"date":"2026-04-09","operation":"Поступление","article":"Оплата от покупателя","inflow":16750,"outflow":0,"net":16750},{"date":"2026-04-09","operation":"Поступление","article":"Оплата от покупателя","inflow":10745,"outflow":0,"net":10745},{"date":"2026-04-09","operation":"Поступление","article":"Оплата от покупателя","inflow":12000,"outflow":0,"net":12000},{"date":"2026-04-09","operation":"Поступление","article":"Оплата от покупателя","inflow":41450,"outflow":0,"net":41450},{"date":"2026-04-09","operation":"Поступление","article":"перевод со счета на счет","inflow":6120.75,"outflow":0,"net":6120.75},{"date":"2026-04-09","operation":"Поступление","article":"перевод со счета на счет","inflow":2512.5,"outflow":0,"net":2512.5},{"date":"2026-04-09","operation":"Поступление","article":"перевод со счета на счет","inflow":6217.5,"outflow":0,"net":6217.5},{"date":"2026-04-09","operation":"Поступление","article":"перевод со счета на счет","inflow":1611.75,"outflow":0,"net":1611.75},{"date":"2026-04-09","operation":"Поступление","article":"перевод со счета на счет","inflow":1800,"outflow":0,"net":1800},{"date":"2026-04-09","operation":"Поступление","article":"Эквайринг","inflow":4347.3,"outflow":0,"net":4347.3},{"date":"2026-04-09","operation":"Списание","article":"Выплата зарплаты","inflow":0,"outflow":90046,"net":-90046},{"date":"2026-04-09","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":2526.46,"net":-2526.46},{"date":"2026-04-09","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":2104.52,"net":-2104.52},{"date":"2026-04-09","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":277171.48,"net":-277171.48},{"date":"2026-04-09","operation":"Списание","article":"Налоги на персонал","inflow":0,"outflow":62100,"net":-62100},{"date":"2026-04-09","operation":"Списание","article":"Налоги на персонал","inflow":0,"outflow":13454,"net":-13454},{"date":"2026-04-09","operation":"Списание","article":"Налоги на персонал","inflow":0,"outflow":414,"net":-414},{"date":"2026-04-09","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1611.75,"net":-1611.75},{"date":"2026-04-09","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":6120.75,"net":-6120.75},{"date":"2026-04-09","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1800,"net":-1800},{"date":"2026-04-09","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":6217.5,"net":-6217.5},{"date":"2026-04-09","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2512.5,"net":-2512.5},{"date":"2026-04-09","operation":"Списание","article":"Подотчет","inflow":0,"outflow":11055.72,"net":-11055.72},{"date":"2026-04-10","operation":"Поступление","article":"Оплата от покупателя","inflow":17096.1,"outflow":0,"net":17096.1},{"date":"2026-04-10","operation":"Поступление","article":"Оплата от покупателя","inflow":28285,"outflow":0,"net":28285},{"date":"2026-04-10","operation":"Поступление","article":"Оплата от покупателя","inflow":16230,"outflow":0,"net":16230},{"date":"2026-04-10","operation":"Поступление","article":"Оплата от покупателя","inflow":23955,"outflow":0,"net":23955},{"date":"2026-04-10","operation":"Поступление","article":"Оплата от покупателя","inflow":34425,"outflow":0,"net":34425},{"date":"2026-04-10","operation":"Поступление","article":"перевод со счета на счет","inflow":5163.75,"outflow":0,"net":5163.75},{"date":"2026-04-10","operation":"Поступление","article":"перевод со счета на счет","inflow":2434.5,"outflow":0,"net":2434.5},{"date":"2026-04-10","operation":"Поступление","article":"перевод со счета на счет","inflow":3593.25,"outflow":0,"net":3593.25},{"date":"2026-04-10","operation":"Поступление","article":"перевод со счета на счет","inflow":4242.75,"outflow":0,"net":4242.75},{"date":"2026-04-10","operation":"Поступление","article":"перевод со счета на счет","inflow":2564.41,"outflow":0,"net":2564.41},{"date":"2026-04-10","operation":"Поступление","article":"Эквайринг","inflow":2363.29,"outflow":0,"net":2363.29},{"date":"2026-04-10","operation":"Списание","article":"оборудование для печати и расходники","inflow":0,"outflow":16191,"net":-16191},{"date":"2026-04-10","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":5163.75,"net":-5163.75},{"date":"2026-04-10","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2564.41,"net":-2564.41},{"date":"2026-04-10","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":3593.25,"net":-3593.25},{"date":"2026-04-10","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":4242.75,"net":-4242.75},{"date":"2026-04-10","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2434.5,"net":-2434.5},{"date":"2026-04-10","operation":"Списание","article":"упаковка","inflow":0,"outflow":28902.5,"net":-28902.5},{"date":"2026-04-12","operation":"Поступление","article":"Оплата от покупателя","inflow":27474.3,"outflow":0,"net":27474.3},{"date":"2026-04-12","operation":"Поступление","article":"перевод со счета на счет","inflow":4121.14,"outflow":0,"net":4121.14},{"date":"2026-04-12","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":4121.14,"net":-4121.14},{"date":"2026-04-13","operation":"Поступление","article":"Оплата от покупателя","inflow":47614,"outflow":0,"net":47614},{"date":"2026-04-13","operation":"Поступление","article":"Оплата от покупателя","inflow":59755.5,"outflow":0,"net":59755.5},{"date":"2026-04-13","operation":"Поступление","article":"перевод со счета на счет","inflow":7142.1,"outflow":0,"net":7142.1},{"date":"2026-04-13","operation":"Поступление","article":"перевод со счета на счет","inflow":8963.32,"outflow":0,"net":8963.32},{"date":"2026-04-13","operation":"Поступление","article":"Эквайринг","inflow":5042.67,"outflow":0,"net":5042.67},{"date":"2026-04-13","operation":"Списание","article":"Без статьи","inflow":0,"outflow":1999.98,"net":-1999.98},{"date":"2026-04-13","operation":"Списание","article":"Консультационные услуги","inflow":0,"outflow":61697,"net":-61697},{"date":"2026-04-13","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":7142.1,"net":-7142.1},{"date":"2026-04-13","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":8963.32,"net":-8963.32},{"date":"2026-04-13","operation":"Списание","article":"транспортно-экспедиционные услуги","inflow":0,"outflow":1691.39,"net":-1691.39},{"date":"2026-04-14","operation":"Поступление","article":"Оплата от покупателя","inflow":10660,"outflow":0,"net":10660},{"date":"2026-04-14","operation":"Поступление","article":"Оплата от покупателя","inflow":26040,"outflow":0,"net":26040},{"date":"2026-04-14","operation":"Поступление","article":"Оплата от покупателя","inflow":18000,"outflow":0,"net":18000},{"date":"2026-04-14","operation":"Поступление","article":"Оплата от покупателя","inflow":9190,"outflow":0,"net":9190},{"date":"2026-04-14","operation":"Поступление","article":"перевод со счета на счет","inflow":3906,"outflow":0,"net":3906},{"date":"2026-04-14","operation":"Поступление","article":"перевод со счета на счет","inflow":1378.5,"outflow":0,"net":1378.5},{"date":"2026-04-14","operation":"Поступление","article":"перевод со счета на счет","inflow":2700,"outflow":0,"net":2700},{"date":"2026-04-14","operation":"Поступление","article":"перевод со счета на счет","inflow":1599,"outflow":0,"net":1599},{"date":"2026-04-14","operation":"Поступление","article":"Эквайринг","inflow":44995.98,"outflow":0,"net":44995.98},{"date":"2026-04-14","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":4759,"net":-4759},{"date":"2026-04-14","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":3569,"net":-3569},{"date":"2026-04-14","operation":"Списание","article":"Коммунальные услуги","inflow":0,"outflow":2301.88,"net":-2301.88},{"date":"2026-04-14","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2700,"net":-2700},{"date":"2026-04-14","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":3906,"net":-3906},{"date":"2026-04-14","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1378.5,"net":-1378.5},{"date":"2026-04-14","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1599,"net":-1599},{"date":"2026-04-14","operation":"Списание","article":"Подотчет","inflow":0,"outflow":1703.56,"net":-1703.56},{"date":"2026-04-15","operation":"Поступление","article":"Оплата от покупателя","inflow":7394.1,"outflow":0,"net":7394.1},{"date":"2026-04-15","operation":"Поступление","article":"Оплата от покупателя","inflow":5455,"outflow":0,"net":5455},{"date":"2026-04-15","operation":"Поступление","article":"Оплата от покупателя","inflow":98000,"outflow":0,"net":98000},{"date":"2026-04-15","operation":"Поступление","article":"Оплата от покупателя","inflow":7516.6,"outflow":0,"net":7516.6},{"date":"2026-04-15","operation":"Поступление","article":"Оплата от покупателя","inflow":18185,"outflow":0,"net":18185},{"date":"2026-04-15","operation":"Поступление","article":"перевод со счета на счет","inflow":1127.49,"outflow":0,"net":1127.49},{"date":"2026-04-15","operation":"Поступление","article":"перевод со счета на счет","inflow":1109.11,"outflow":0,"net":1109.11},{"date":"2026-04-15","operation":"Поступление","article":"перевод со счета на счет","inflow":818.25,"outflow":0,"net":818.25},{"date":"2026-04-15","operation":"Поступление","article":"перевод со счета на счет","inflow":14700,"outflow":0,"net":14700},{"date":"2026-04-15","operation":"Поступление","article":"перевод со счета на счет","inflow":2727.75,"outflow":0,"net":2727.75},{"date":"2026-04-15","operation":"Поступление","article":"Прочее поступление","inflow":990,"outflow":0,"net":990},{"date":"2026-04-15","operation":"Поступление","article":"Прочее поступление","inflow":1190,"outflow":0,"net":1190},{"date":"2026-04-15","operation":"Поступление","article":"Эквайринг","inflow":729.41,"outflow":0,"net":729.41},{"date":"2026-04-15","operation":"Поступление","article":"Эквайринг","inflow":6491.74,"outflow":0,"net":6491.74},{"date":"2026-04-15","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1109.11,"net":-1109.11},{"date":"2026-04-15","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":818.25,"net":-818.25},{"date":"2026-04-15","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2727.75,"net":-2727.75},{"date":"2026-04-15","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1127.49,"net":-1127.49},{"date":"2026-04-15","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":14700,"net":-14700},{"date":"2026-04-15","operation":"Списание","article":"Подотчет","inflow":0,"outflow":900,"net":-900},{"date":"2026-04-15","operation":"Списание","article":"Прочее списание","inflow":0,"outflow":38671.37,"net":-38671.37},{"date":"2026-04-15","operation":"Списание","article":"Прочее списание","inflow":0,"outflow":22648.82,"net":-22648.82},{"date":"2026-04-15","operation":"Списание","article":"Товар","inflow":0,"outflow":13150,"net":-13150},{"date":"2026-04-15","operation":"Списание","article":"услуги печати","inflow":0,"outflow":3500,"net":-3500},{"date":"2026-04-16","operation":"Поступление","article":"Оплата от покупателя","inflow":10090,"outflow":0,"net":10090},{"date":"2026-04-16","operation":"Поступление","article":"Оплата от покупателя","inflow":10000,"outflow":0,"net":10000},{"date":"2026-04-16","operation":"Поступление","article":"перевод со счета на счет","inflow":1513.5,"outflow":0,"net":1513.5},{"date":"2026-04-16","operation":"Поступление","article":"перевод со счета на счет","inflow":1500,"outflow":0,"net":1500},{"date":"2026-04-16","operation":"Поступление","article":"Эквайринг","inflow":57485.48,"outflow":0,"net":57485.48},{"date":"2026-04-16","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1500,"net":-1500},{"date":"2026-04-16","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1513.5,"net":-1513.5},{"date":"2026-04-16","operation":"Списание","article":"Подотчет","inflow":0,"outflow":2111.77,"net":-2111.77},{"date":"2026-04-16","operation":"Списание","article":"Подотчет","inflow":0,"outflow":750,"net":-750},{"date":"2026-04-16","operation":"Списание","article":"Товар","inflow":0,"outflow":129742.2,"net":-129742.2},{"date":"2026-04-16","operation":"Списание","article":"Товар, материал медаль шоколадная","inflow":0,"outflow":98000,"net":-98000},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":56903.5,"outflow":0,"net":56903.5},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":105516.5,"outflow":0,"net":105516.5},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":65749.5,"outflow":0,"net":65749.5},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":5200,"outflow":0,"net":5200},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":28538,"outflow":0,"net":28538},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":95085.5,"outflow":0,"net":95085.5},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":4320,"outflow":0,"net":4320},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":18200,"outflow":0,"net":18200},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":20400,"outflow":0,"net":20400},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":3700,"outflow":0,"net":3700},{"date":"2026-04-17","operation":"Поступление","article":"Оплата от покупателя","inflow":122390,"outflow":0,"net":122390},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":15827.47,"outflow":0,"net":15827.47},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":8535.52,"outflow":0,"net":8535.52},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":18358.5,"outflow":0,"net":18358.5},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":9862.42,"outflow":0,"net":9862.42},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":2730,"outflow":0,"net":2730},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":3060,"outflow":0,"net":3060},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":648,"outflow":0,"net":648},{"date":"2026-04-17","operation":"Поступление","article":"перевод со счета на счет","inflow":555,"outflow":0,"net":555},{"date":"2026-04-17","operation":"Поступление","article":"Эквайринг","inflow":953.1,"outflow":0,"net":953.1},{"date":"2026-04-17","operation":"Поступление","article":"Эквайринг","inflow":40686.61,"outflow":0,"net":40686.61},{"date":"2026-04-17","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":153100,"net":-153100},{"date":"2026-04-17","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":258204,"net":-258204},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":555,"net":-555},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":8535.52,"net":-8535.52},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":9862.42,"net":-9862.42},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":15827.47,"net":-15827.47},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":648,"net":-648},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":18358.5,"net":-18358.5},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":3060,"net":-3060},{"date":"2026-04-17","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2730,"net":-2730},{"date":"2026-04-17","operation":"Списание","article":"Подотчет","inflow":0,"outflow":10849,"net":-10849},{"date":"2026-04-17","operation":"Списание","article":"Товар","inflow":0,"outflow":33800,"net":-33800},{"date":"2026-04-17","operation":"Списание","article":"упаковка","inflow":0,"outflow":19350.5,"net":-19350.5},{"date":"2026-04-18","operation":"Поступление","article":"Оплата от покупателя","inflow":41238.4,"outflow":0,"net":41238.4},{"date":"2026-04-18","operation":"Поступление","article":"перевод со счета на счет","inflow":6185.76,"outflow":0,"net":6185.76},{"date":"2026-04-18","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":6185.76,"net":-6185.76},{"date":"2026-04-19","operation":"Списание","article":"Подотчет","inflow":0,"outflow":864,"net":-864},{"date":"2026-04-20","operation":"Поступление","article":"Оплата от покупателя","inflow":45740,"outflow":0,"net":45740},{"date":"2026-04-20","operation":"Поступление","article":"Оплата от покупателя","inflow":2636.2,"outflow":0,"net":2636.2},{"date":"2026-04-20","operation":"Поступление","article":"перевод со счета на счет","inflow":200000,"outflow":0,"net":200000},{"date":"2026-04-20","operation":"Поступление","article":"перевод со счета на счет","inflow":6861,"outflow":0,"net":6861},{"date":"2026-04-20","operation":"Поступление","article":"перевод со счета на счет","inflow":395.43,"outflow":0,"net":395.43},{"date":"2026-04-20","operation":"Поступление","article":"Эквайринг","inflow":7110.8,"outflow":0,"net":7110.8},{"date":"2026-04-20","operation":"Списание","article":"Комиссия банка","inflow":0,"outflow":1190,"net":-1190},{"date":"2026-04-20","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":19000,"net":-19000},{"date":"2026-04-20","operation":"Списание","article":"НДС","inflow":0,"outflow":442938,"net":-442938},{"date":"2026-04-20","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":395.43,"net":-395.43},{"date":"2026-04-20","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":6861,"net":-6861},{"date":"2026-04-20","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":200000,"net":-200000},{"date":"2026-04-20","operation":"Списание","article":"транспортно-экспедиционные услуги","inflow":0,"outflow":3.38,"net":-3.38},{"date":"2026-04-20","operation":"Списание","article":"УСН","inflow":0,"outflow":77107,"net":-77107},{"date":"2026-04-20","operation":"Списание","article":"Хозрасходы, офисные расходы, мебель","inflow":0,"outflow":6980,"net":-6980},{"date":"2026-04-21","operation":"Поступление","article":"Оплата от покупателя","inflow":4000,"outflow":0,"net":4000},{"date":"2026-04-21","operation":"Поступление","article":"Оплата от покупателя","inflow":7020,"outflow":0,"net":7020},{"date":"2026-04-21","operation":"Поступление","article":"Оплата от покупателя","inflow":22490,"outflow":0,"net":22490},{"date":"2026-04-21","operation":"Поступление","article":"перевод со счета на счет","inflow":1053,"outflow":0,"net":1053},{"date":"2026-04-21","operation":"Поступление","article":"перевод со счета на счет","inflow":3373.5,"outflow":0,"net":3373.5},{"date":"2026-04-21","operation":"Поступление","article":"перевод со счета на счет","inflow":600,"outflow":0,"net":600},{"date":"2026-04-21","operation":"Поступление","article":"перевод со счета на счет","inflow":30000,"outflow":0,"net":30000},{"date":"2026-04-21","operation":"Поступление","article":"Эквайринг","inflow":5682.6,"outflow":0,"net":5682.6},{"date":"2026-04-21","operation":"Списание","article":"Курьерская доставка","inflow":0,"outflow":9413.8,"net":-9413.8},{"date":"2026-04-21","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":600,"net":-600},{"date":"2026-04-21","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1053,"net":-1053},{"date":"2026-04-21","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":3373.5,"net":-3373.5},{"date":"2026-04-21","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":30000,"net":-30000},{"date":"2026-04-22","operation":"Поступление","article":"Возврат от поставщика","inflow":214,"outflow":0,"net":214},{"date":"2026-04-22","operation":"Поступление","article":"Оплата от покупателя","inflow":5000,"outflow":0,"net":5000},{"date":"2026-04-22","operation":"Поступление","article":"Оплата от покупателя","inflow":56903.5,"outflow":0,"net":56903.5},{"date":"2026-04-22","operation":"Поступление","article":"Оплата от покупателя","inflow":11760,"outflow":0,"net":11760},{"date":"2026-04-22","operation":"Поступление","article":"Оплата от покупателя","inflow":10000,"outflow":0,"net":10000},{"date":"2026-04-22","operation":"Поступление","article":"Оплата от покупателя","inflow":17370,"outflow":0,"net":17370},{"date":"2026-04-22","operation":"Поступление","article":"перевод со счета на счет","inflow":2605.5,"outflow":0,"net":2605.5},{"date":"2026-04-22","operation":"Поступление","article":"перевод со счета на счет","inflow":1500,"outflow":0,"net":1500},{"date":"2026-04-22","operation":"Поступление","article":"перевод со счета на счет","inflow":750,"outflow":0,"net":750},{"date":"2026-04-22","operation":"Поступление","article":"перевод со счета на счет","inflow":1764,"outflow":0,"net":1764},{"date":"2026-04-22","operation":"Поступление","article":"перевод со счета на счет","inflow":8535.52,"outflow":0,"net":8535.52},{"date":"2026-04-22","operation":"Поступление","article":"Эквайринг","inflow":10634.83,"outflow":0,"net":10634.83},{"date":"2026-04-22","operation":"Списание","article":"Аренда складских помещений","inflow":0,"outflow":21600,"net":-21600},{"date":"2026-04-22","operation":"Списание","article":"Аренда складских помещений","inflow":0,"outflow":8700,"net":-8700},{"date":"2026-04-22","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":24000,"net":-24000},{"date":"2026-04-22","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1764,"net":-1764},{"date":"2026-04-22","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":8535.52,"net":-8535.52},{"date":"2026-04-22","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1500,"net":-1500},{"date":"2026-04-22","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2605.5,"net":-2605.5},{"date":"2026-04-22","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":750,"net":-750},{"date":"2026-04-22","operation":"Списание","article":"Подотчет","inflow":0,"outflow":2360,"net":-2360},{"date":"2026-04-22","operation":"Списание","article":"Программное обеспечение, Каталоги, Лицензии","inflow":0,"outflow":11500,"net":-11500},{"date":"2026-04-22","operation":"Списание","article":"Товар","inflow":0,"outflow":104,"net":-104},{"date":"2026-04-22","operation":"Списание","article":"Товар","inflow":0,"outflow":2555,"net":-2555},{"date":"2026-04-22","operation":"Списание","article":"Товар","inflow":0,"outflow":32193,"net":-32193},{"date":"2026-04-22","operation":"Списание","article":"Товар","inflow":0,"outflow":7740,"net":-7740},{"date":"2026-04-23","operation":"Поступление","article":"Возврат займа контрагентом","inflow":68000,"outflow":0,"net":68000},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":30138,"outflow":0,"net":30138},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":5000,"outflow":0,"net":5000},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":27498.8,"outflow":0,"net":27498.8},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":4770,"outflow":0,"net":4770},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":9745,"outflow":0,"net":9745},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":11680,"outflow":0,"net":11680},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":18750,"outflow":0,"net":18750},{"date":"2026-04-23","operation":"Поступление","article":"Оплата от покупателя","inflow":10000,"outflow":0,"net":10000},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":1752,"outflow":0,"net":1752},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":4520.7,"outflow":0,"net":4520.7},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":715.5,"outflow":0,"net":715.5},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":4124.82,"outflow":0,"net":4124.82},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":750,"outflow":0,"net":750},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":1461.75,"outflow":0,"net":1461.75},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":1500,"outflow":0,"net":1500},{"date":"2026-04-23","operation":"Поступление","article":"перевод со счета на счет","inflow":2812.5,"outflow":0,"net":2812.5},{"date":"2026-04-23","operation":"Поступление","article":"Эквайринг","inflow":8305.58,"outflow":0,"net":8305.58},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":750,"net":-750},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2812.5,"net":-2812.5},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":4520.7,"net":-4520.7},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":715.5,"net":-715.5},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1752,"net":-1752},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":4124.82,"net":-4124.82},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1500,"net":-1500},{"date":"2026-04-23","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1461.75,"net":-1461.75},{"date":"2026-04-23","operation":"Списание","article":"услуги печати","inflow":0,"outflow":14000,"net":-14000},{"date":"2026-04-24","operation":"Поступление","article":"Выплата процентов по депозиту","inflow":90367.12,"outflow":0,"net":90367.12},{"date":"2026-04-24","operation":"Поступление","article":"Депозит","inflow":10000000,"outflow":0,"net":10000000},{"date":"2026-04-24","operation":"Поступление","article":"Оплата от покупателя","inflow":18943.4,"outflow":0,"net":18943.4},{"date":"2026-04-24","operation":"Поступление","article":"Оплата от покупателя","inflow":56871,"outflow":0,"net":56871},{"date":"2026-04-24","operation":"Поступление","article":"Оплата от покупателя","inflow":3206.25,"outflow":0,"net":3206.25},{"date":"2026-04-24","operation":"Поступление","article":"Оплата от покупателя","inflow":6800,"outflow":0,"net":6800},{"date":"2026-04-24","operation":"Поступление","article":"Оплата от покупателя","inflow":48568.75,"outflow":0,"net":48568.75},{"date":"2026-04-24","operation":"Поступление","article":"Оплата от покупателя","inflow":72000,"outflow":0,"net":72000},{"date":"2026-04-24","operation":"Поступление","article":"перевод со счета на счет","inflow":480.93,"outflow":0,"net":480.93},{"date":"2026-04-24","operation":"Поступление","article":"перевод со счета на счет","inflow":1020,"outflow":0,"net":1020},{"date":"2026-04-24","operation":"Поступление","article":"перевод со счета на счет","inflow":10800,"outflow":0,"net":10800},{"date":"2026-04-24","operation":"Поступление","article":"перевод со счета на счет","inflow":2841.51,"outflow":0,"net":2841.51},{"date":"2026-04-24","operation":"Поступление","article":"перевод со счета на счет","inflow":8530.65,"outflow":0,"net":8530.65},{"date":"2026-04-24","operation":"Поступление","article":"Эквайринг","inflow":5825.57,"outflow":0,"net":5825.57},{"date":"2026-04-24","operation":"Списание","article":"Курьерская доставка","inflow":0,"outflow":22270.18,"net":-22270.18},{"date":"2026-04-24","operation":"Списание","article":"материалы для производства","inflow":0,"outflow":45000,"net":-45000},{"date":"2026-04-24","operation":"Списание","article":"Налоги на персонал","inflow":0,"outflow":13456,"net":-13456},{"date":"2026-04-24","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":2841.51,"net":-2841.51},{"date":"2026-04-24","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":1020,"net":-1020},{"date":"2026-04-24","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":10800,"net":-10800},{"date":"2026-04-24","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":8530.65,"net":-8530.65},{"date":"2026-04-24","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":480.93,"net":-480.93},{"date":"2026-04-24","operation":"Списание","article":"Программное обеспечение, Каталоги, Лицензии","inflow":0,"outflow":2230,"net":-2230},{"date":"2026-04-24","operation":"Списание","article":"транспортно-экспедиционные услуги","inflow":0,"outflow":63400,"net":-63400},{"date":"2026-04-24","operation":"Списание","article":"упаковка","inflow":0,"outflow":34627,"net":-34627},{"date":"2026-04-25","operation":"Поступление","article":"Оплата от покупателя","inflow":48600,"outflow":0,"net":48600},{"date":"2026-04-25","operation":"Поступление","article":"перевод со счета на счет","inflow":7290,"outflow":0,"net":7290},{"date":"2026-04-25","operation":"Списание","article":"перевод со счета на счет","inflow":0,"outflow":7290,"net":-7290},{"date":"2026-04-25","operation":"Списание","article":"Подотчет","inflow":0,"outflow":2534.4,"net":-2534.4},{"date":"2026-04-26","operation":"Списание","article":"Подотчет","inflow":0,"outflow":4686,"net":-4686}]};
+const baseOps = report.operations.map(o => ({...o, day: new Date(o.date + 'T00:00:00'), source:'base'}));
+let addedOps = JSON.parse(localStorage.getItem('ddsAddedOperations') || '[]').map(o => ({...o, day: new Date(o.date + 'T00:00:00'), source:'manual'}));
+let ops = [];
+const initialBalance = report.initialBalance;
+const money = v => new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 0}).format(v || 0);
+const money2 = v => new Intl.NumberFormat('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(v || 0);
+const byId = id => document.getElementById(id);
+let minDate = '', maxDate = '';
+
+function rebuildOps(){
+  ops = [...baseOps, ...addedOps].sort((a,b)=>a.date.localeCompare(b.date));
+  minDate = ops.reduce((m,o)=>!m || o.date < m ? o.date : m, '');
+  maxDate = ops.reduce((m,o)=>!m || o.date > m ? o.date : m, '');
+}
+function parseAmount(text){
+  const clean = String(text || '').replace(/\s/g,'').replace(',', '.').replace(/[^0-9.-]/g,'');
+  return Math.abs(Number(clean) || 0);
+}
+function saveAdded(){
+  localStorage.setItem('ddsAddedOperations', JSON.stringify(addedOps.map(({day,source,...o})=>o)));
+}
+function updateArticleList(){
+  const articles = [...new Set(ops.map(o=>o.article).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+  byId('articleList').innerHTML = articles.map(a=>`<option value="${a}">`).join('');
+}
+function renderAddedRows(){
+  byId('addedCount').textContent = `Добавлено: ${addedOps.length}`;
+  byId('addedRows').innerHTML = addedOps.slice().reverse().slice(0,20).map(o=>`<tr><td>${o.date}</td><td>${o.operation}</td><td>${o.article}</td><td class="num">${money2(o.inflow || o.outflow)}</td></tr>`).join('') || '<tr><td colspan="4">Пока нет добавленных строк</td></tr>';
+}
+
+function readRange(prefix){ return {start: byId(prefix+'Start').value || minDate, end: byId(prefix+'End').value || maxDate}; }
+function inRange(o, r){ return o.date >= r.start && o.date <= r.end; }
+function balanceBefore(date){ return initialBalance + ops.filter(o => o.date < date).reduce((s,o)=>s+o.net,0); }
+function summarize(range){
+  const rows = ops.filter(o => inRange(o, range));
+  const inflow = rows.reduce((s,o)=>s+o.inflow,0), outflow = rows.reduce((s,o)=>s+o.outflow,0);
+  const net = inflow - outflow, start = balanceBefore(range.start), end = start + net;
+  return {rows, inflow, outflow, net, start, end};
+}
+function groupArticles(rows, key){
+  const map = new Map();
+  rows.filter(o=>o[key]>0).forEach(o=>map.set(o.article, (map.get(o.article)||0)+o[key]));
+  return [...map].map(([Article,Amount])=>({Article,Amount})).sort((a,b)=>b.Amount-a.Amount);
+}
+function dailyRows(range){
+  const dates = [...new Set(ops.filter(o=>inRange(o,range)).map(o=>o.date))].sort();
+  let running = balanceBefore(range.start);
+  return dates.map(d=>{
+    const rows = ops.filter(o=>o.date===d);
+    const inflow = rows.reduce((s,o)=>s+o.inflow,0), outflow = rows.reduce((s,o)=>s+o.outflow,0);
+    const net = inflow - outflow; running += net;
+    return {Date:d, Label:d.slice(8,10)+'.'+d.slice(5,7), Inflow:inflow, Outflow:outflow, Net:net, Balance:running};
+  });
+}
+function pct(a,b){ if(!b) return a ? 'н/д' : '0%'; return ((a-b)/Math.abs(b)*100).toFixed(1).replace('.', ',') + '%'; }
+function deltaText(a,b){ const diff=a-b; return (diff>=0?'+':'') + money2(diff) + ' / ' + pct(a,b); }
+function setCompare(prefix, a, b){
+  byId(prefix+'P1').textContent = money2(a);
+  byId(prefix+'P2').textContent = money2(b);
+  const delta = byId(prefix+'Delta');
+  delta.textContent = deltaText(a, b);
+  delta.className = a - b >= 0 ? 'pos' : 'neg';
+}
+function tableRows(id, rows){
+  byId(id).innerHTML = rows.slice(0,12).map(r=>`<tr><td>${r.Article}</td><td class="num">${money2(r.Amount)}</td></tr>`).join('') || '<tr><td colspan="2">Нет данных</td></tr>';
+}
+function setup(canvas){ const dpr=window.devicePixelRatio||1, rect=canvas.getBoundingClientRect(); canvas.width=Math.max(1,rect.width*dpr); canvas.height=Math.max(1,rect.height*dpr); const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,rect.width,rect.height); return {ctx,w:rect.width,h:rect.height}; }
+function axes(ctx,w,h,p){ ctx.strokeStyle='#d9e0ea'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.l,p.t); ctx.lineTo(p.l,h-p.b); ctx.lineTo(w-p.r,h-p.b); ctx.stroke(); }
+function lineChart(id, rows, key, color){
+  const {ctx,w,h}=setup(byId(id)), p={l:62,r:16,t:18,b:42}; axes(ctx,w,h,p); if(!rows.length) return;
+  const vals=rows.map(r=>r[key]), min=Math.min(...vals,0), max=Math.max(...vals,1);
+  const x=i=>p.l+(w-p.l-p.r)*(rows.length===1?0:i/(rows.length-1)), y=v=>h-p.b-(h-p.t-p.b)*((v-min)/(max-min||1));
+  ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.beginPath(); rows.forEach((r,i)=>i?ctx.lineTo(x(i),y(r[key])):ctx.moveTo(x(i),y(r[key]))); ctx.stroke();
+  ctx.fillStyle=color; rows.forEach((r,i)=>{ctx.beginPath();ctx.arc(x(i),y(r[key]),3,0,Math.PI*2);ctx.fill()});
+  ctx.fillStyle='#687385'; ctx.font='12px Segoe UI, Arial'; ctx.fillText(money(max),6,p.t+8); ctx.fillText(money(min),6,h-p.b);
+  rows.forEach((r,i)=>{if(i===0||i===rows.length-1||i%5===0)ctx.fillText(r.Label,x(i)-14,h-14)});
+}
+const palette = ['#18805b','#255f99','#bd3b3b','#a66b00','#6d5bd0','#00838f','#7a4b2a','#677483','#c2410c','#2f855a','#8b5cf6'];
+function pieChart(id, rows, options={}){
+  const {ctx,w,h}=setup(byId(id)); if(!rows.length) return;
+  const total=rows.reduce((s,r)=>s+r.Amount,0); if(!total) return;
+  const donut = options.donut !== false;
+  const cx=w*.42, cy=h*.5, radius=Math.max(54, Math.min(w*.25,h*.34));
+  let start=-Math.PI/2;
+  ctx.font='11px Segoe UI, Arial'; ctx.lineWidth=1;
+  rows.slice(0,8).forEach((r,i)=>{
+    const val=r.Amount, angle=val/total*Math.PI*2, end=start+angle, mid=start+angle/2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,radius,start,end); ctx.closePath();
+    ctx.fillStyle=options.colors ? options.colors[i%options.colors.length] : palette[i%palette.length]; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.stroke();
+    if(angle>.18){
+      const sx=cx+Math.cos(mid)*radius*.78, sy=cy+Math.sin(mid)*radius*.78;
+      const ex=cx+Math.cos(mid)*(radius+16), ey=cy+Math.sin(mid)*(radius+16);
+      const labelRight = Math.cos(mid) >= 0;
+      const lx=ex+(labelRight?10:-10), ly=ey;
+      ctx.strokeStyle='#9aa5b4'; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); ctx.lineTo(lx,ly); ctx.stroke();
+      ctx.fillStyle='#202733'; ctx.textAlign=labelRight?'left':'right';
+      const percent=(val/total*100).toFixed(1).replace('.', ',')+'%';
+      const label=r.Article.length>18?r.Article.slice(0,17)+'…':r.Article;
+      ctx.fillText(label, lx, ly-3); ctx.fillStyle='#687385'; ctx.fillText(percent+' / '+money(val), lx, ly+11);
+    }
+    start=end;
+  });
+  if(donut){
+    ctx.beginPath(); ctx.arc(cx,cy,radius*.52,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+    ctx.textAlign='center'; ctx.fillStyle='#202733'; ctx.font='700 15px Segoe UI, Arial'; ctx.fillText(money(total),cx,cy+4);
+    ctx.font='11px Segoe UI, Arial'; ctx.fillStyle='#687385'; ctx.fillText(options.center || 'Итого',cx,cy+20);
+  }
+}
+function flowPieChart(id, inflow, outflow){
+  pieChart(id, [
+    {Article:'Поступления', Amount:inflow},
+    {Article:'Списания', Amount:outflow}
+  ], {colors:['#18805b','#bd3b3b'], center:'ДДС'});
+}
+function setDefaults(){
+  rebuildOps();
+  byId('p1Start').value=minDate; byId('p1End').value=maxDate;
+  byId('newDate').value=maxDate;
+  const start=new Date(minDate+'T00:00:00'), end=new Date(maxDate+'T00:00:00'), days=Math.round((end-start)/86400000)+1;
+  const p2End=new Date(start); p2End.setDate(p2End.getDate()-1); const p2Start=new Date(p2End); p2Start.setDate(p2Start.getDate()-days+1);
+  byId('p2Start').value=p2Start.toISOString().slice(0,10); byId('p2End').value=p2End.toISOString().slice(0,10);
+  updateArticleList(); renderAddedRows();
+}
+function render(){
+  rebuildOps(); updateArticleList(); renderAddedRows();
+  if(!byId('p1Start').value) byId('p1Start').value=minDate;
+  if(!byId('p1End').value) byId('p1End').value=maxDate;
+  const r1=readRange('p1'), r2=readRange('p2'), s1=summarize(r1), s2=summarize(r2), days=dailyRows(r1);
+  byId('periodText').textContent=`Период 1: ${r1.start} - ${r1.end}. Расчет включает начальный остаток.`;
+  byId('kStart').textContent=money2(s1.start); byId('kIn').textContent=money2(s1.inflow); byId('kOut').textContent=money2(s1.outflow); byId('kNet').textContent=money2(s1.net); byId('kEnd').textContent=money2(s1.end);
+  setCompare('cIn', s1.inflow, s2.inflow); setCompare('cOut', s1.outflow, s2.outflow); setCompare('cNet', s1.net, s2.net);
+  const income=groupArticles(s1.rows,'inflow'), expense=groupArticles(s1.rows,'outflow');
+  tableRows('incomeRows', income); tableRows('expenseRows', expense);
+  lineChart('balanceChart', days, 'Balance', '#255f99'); flowPieChart('flowChart', s1.inflow, s1.outflow); pieChart('incomeChart', income, {center:'Поступления'}); pieChart('expenseChart', expense, {center:'Затраты'});
+}
+function addManualOperation(){
+  const date = byId('newDate').value;
+  const operation = byId('newOperation').value.trim();
+  const article = byId('newArticle').value.trim() || 'Без статьи';
+  const amount = parseAmount(byId('newAmount').value);
+  if(!date || !['Поступление','Списание'].includes(operation) || amount <= 0){
+    alert('Заполните дату, операцию и сумму больше нуля.');
+    return;
+  }
+  addedOps.push({
+    date,
+    operation,
+    article,
+    inflow: operation === 'Поступление' ? amount : 0,
+    outflow: operation === 'Списание' ? amount : 0,
+    net: operation === 'Поступление' ? amount : -amount,
+    day: new Date(date + 'T00:00:00'),
+    source: 'manual'
+  });
+  saveAdded();
+  byId('newArticle').value='';
+  byId('newAmount').value='';
+  byId('p1End').value = date > (byId('p1End').value || '') ? date : byId('p1End').value;
+  render();
+}
+function exportAddedCsv(){
+  const header = 'Дата;Операция;Статья;Сумма\n';
+  const rows = addedOps.map(o => [o.date,o.operation,o.article,String(o.inflow || o.outflow).replace('.', ',')].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + header + rows], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'dds_added_operations.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+byId('allPeriod').addEventListener('click',()=>{byId('p1Start').value=minDate;byId('p1End').value=maxDate;render()});
+byId('prevPeriod').addEventListener('click',()=>{const s=new Date(byId('p1Start').value+'T00:00:00'), e=new Date(byId('p1End').value+'T00:00:00'), days=Math.round((e-s)/86400000)+1, p2e=new Date(s);p2e.setDate(p2e.getDate()-1);const p2s=new Date(p2e);p2s.setDate(p2s.getDate()-days+1);byId('p2Start').value=p2s.toISOString().slice(0,10);byId('p2End').value=p2e.toISOString().slice(0,10);render()});
+['p1Start','p1End','p2Start','p2End'].forEach(id=>byId(id).addEventListener('change',render));
+byId('addOperation').addEventListener('click', addManualOperation);
+byId('refreshDashboard').addEventListener('click', render);
+byId('exportAdded').addEventListener('click', exportAddedCsv);
+byId('clearAdded').addEventListener('click',()=>{ if(confirm('Очистить все строки, добавленные в этом дашборде?')){ addedOps=[]; saveAdded(); render(); }});
+window.addEventListener('resize',render);
+setDefaults(); render();
+</script>
+</body>
+</html>
