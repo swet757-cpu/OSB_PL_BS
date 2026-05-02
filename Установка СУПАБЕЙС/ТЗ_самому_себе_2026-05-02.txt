@@ -1,0 +1,487 @@
+# ТЗ самому себе: Supabase + n8n на сервере ai_test_proba
+
+Дата фиксации: 2026-05-02
+
+## 1. Текущий результат
+
+Сервер:
+- IP: 155.212.135.186
+- ОС: Ubuntu 24.04.4 LTS
+- пользователь для работы: svetneiro
+- root-вход по SSH отключен
+- вход по паролю SSH отключен
+- вход рабочий только по SSH-ключу
+
+Домены:
+- n8n: https://n8n1.sweevottak.pro
+- Supabase: https://supabase2.sweevottak.pro
+
+Установлено:
+- Docker 29.4.2
+- Docker Compose v5.1.3
+- Caddy 2.11.2
+- n8n 2.18.5
+- Supabase self-hosted из официального docker-каталога GitHub
+
+Рабочие каталоги:
+- /opt/stack/n8n
+- /opt/stack/supabase
+- /opt/stack/backups
+- /opt/stack/scripts
+
+## 2. Главные запреты
+
+Не делать:
+- не ставить Coolify на этот сервер без отдельного подтверждения и новой оценки диска;
+- не включать root-вход по SSH;
+- не включать PasswordAuthentication yes;
+- не публиковать внутренние Docker-порты на 0.0.0.0;
+- не удалять Docker volumes без отдельного подтверждения;
+- не удалять /opt/stack/backups без отдельного подтверждения;
+- не запускать docker system prune -a без отдельного подтверждения;
+- не хранить пароли в чатах и обычных текстовых файлах;
+- не менять DNS, если HTTPS уже работает.
+
+Перед любыми действиями:
+1. Открыть этот файл.
+2. Проверить раздел 4.
+3. Проверить диск по разделу 8.
+4. Если задача спорная, сначала написать результат проверки, потом предлагать действие.
+
+Если возникла ошибка:
+1. Не исправлять вслепую.
+2. Найти соответствующий раздел в этом файле.
+3. Снять факты командами из разделов 4-8.
+4. Сказать, что именно сломано.
+5. Только потом менять конфигурацию.
+
+## 3. Доступ
+
+Подключение:
+
+```bash
+ssh svetneiro@155.212.135.186
+```
+
+Проверка sudo:
+
+```bash
+sudo -v
+```
+
+Root по SSH должен НЕ работать:
+
+```bash
+ssh root@155.212.135.186
+```
+
+Ожидаемо:
+
+```text
+Permission denied (publickey).
+```
+
+## 4. Проверка после любых изменений
+
+Выполнить:
+
+```bash
+sudo systemctl is-active docker caddy fail2ban
+sudo ufw status verbose
+sudo sshd -T | grep -E '^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication) '
+sudo ss -tulpen | grep -E ':(22|80|443|5432|6543|5678|8000|8443)\b' || true
+df -h /
+free -h
+```
+
+Ожидаемо:
+- docker/caddy/fail2ban: active;
+- UFW: active;
+- открыты наружу только 22/80/443;
+- 5678, 8000, 8443, 5432, 6543 слушают только 127.0.0.1;
+- PermitRootLogin no;
+- PasswordAuthentication no.
+
+## 5. Проверка n8n
+
+Команды:
+
+```bash
+cd /opt/stack/n8n
+sudo docker compose --env-file .env -f compose.yml ps
+curl -I --max-time 30 https://n8n1.sweevottak.pro
+curl -fsS http://127.0.0.1:5678/healthz
+```
+
+Ожидаемо:
+- n8n: Up;
+- n8n-postgres: Up healthy;
+- HTTPS: HTTP/2 200;
+- healthz: {"status":"ok"}.
+
+Вход:
+- URL: https://n8n1.sweevottak.pro
+- email: swet757@gmail.com
+- пароль: тот, который был задан для n8n; в файл не записывать.
+
+## 6. Проверка Supabase
+
+Команды:
+
+```bash
+cd /opt/stack/supabase
+sudo docker compose --env-file .env -f docker-compose.yml ps
+curl -I --max-time 30 https://supabase2.sweevottak.pro
+curl -I --max-time 30 http://127.0.0.1:8000
+```
+
+Ожидаемо:
+- основные контейнеры Supabase: Up;
+- health у db/auth/studio/kong/meta/storage/realtime/analytics/vector/imgproxy/pooler: healthy;
+- внешний HTTPS Supabase: HTTP/2 401;
+- локальный Kong: HTTP/1.1 401.
+
+HTTP 401 для Supabase на корне - это нормально: включена Basic Auth через Kong.
+
+Логин Studio:
+
+```text
+swet757
+```
+
+Пароль Studio смотреть только на сервере:
+
+```bash
+sudo grep '^DASHBOARD_PASSWORD=' /opt/stack/supabase/.env
+```
+
+## 7. Бэкапы
+
+Скрипты:
+- /opt/stack/scripts/backup-n8n.sh
+- /opt/stack/scripts/backup-supabase.sh
+- /opt/stack/scripts/backup-all.sh
+
+Cron:
+
+```bash
+cat /etc/cron.d/stack-backups
+```
+
+Ожидаемо:
+
+```text
+30 3 * * * root /opt/stack/scripts/backup-all.sh >> /var/log/stack-backups.log 2>&1
+```
+
+Ручная проверка:
+
+```bash
+sudo /opt/stack/scripts/backup-all.sh
+sudo find /opt/stack/backups -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+```
+
+Ожидаемо:
+- n8n backup ok;
+- supabase backup ok;
+- появляются .sql.gz и .sha256.
+
+## 8. Диск
+
+Текущий диск маленький: 24 ГБ.
+
+После установки занято около 85%, свободно около 3,6 ГБ.
+
+Это жёсткое ограничение. Любая установка нового сервиса может сломаться из-за места.
+
+Правило:
+- если свободно меньше 4 ГБ, не ставить новые платформы управления;
+- если свободно меньше 3 ГБ, не делать pull больших Docker-образов;
+- если занято 90% и выше, сначала чистка и анализ, потом любые действия;
+- если занято 95% и выше, остановить работу и предупредить пользователя.
+
+Перед любым обновлением выполнить:
+
+```bash
+df -h /
+sudo docker system df
+sudo du -xh -d1 /var /var/lib /var/lib/docker /opt /opt/stack 2>/dev/null | sort -h | tail -40
+```
+
+Можно чистить без риска только:
+
+```bash
+sudo apt-get clean
+sudo rm -rf /var/lib/apt/lists/*
+sudo journalctl --vacuum-size=50M
+```
+
+Не удалять без подтверждения:
+- Docker volumes;
+- образы n8n/Postgres/Supabase;
+- /opt/stack/backups;
+- /opt/stack/n8n;
+- /opt/stack/supabase.
+
+Мелкие кандидаты, если нужен каждый мегабайт:
+- /tmp/jwtvenv - временный Python venv для генерации JWT, около 16 МБ;
+- /opt/stack/supabase-src-tmp - sparse clone Supabase, около 5 МБ.
+
+Перед удалением показать:
+
+```bash
+sudo du -sh /tmp/jwtvenv /opt/stack/supabase-src-tmp 2>/dev/null || true
+```
+
+И ждать подтверждения.
+
+Что уже было удалено с подтверждением:
+- apt cache;
+- /var/lib/apt/lists/*;
+- журналы vacuum до 50M, фактически почти ничего не освободили.
+
+Что НЕ удалялось:
+- Docker volumes;
+- Docker images;
+- бэкапы;
+- рабочие каталоги стеков.
+
+## 9. Если SSH снова заблокирован
+
+Причина обычно fail2ban после неудачных root-проверок.
+
+Главная ошибка, которую не повторять:
+- не делать несколько проверок root SSH подряд;
+- fail2ban может заблокировать IP и закрыть доступ по 22 порту.
+
+Через консоль Beget выполнить:
+
+```bash
+fail2ban-client unban --all && systemctl restart fail2ban && ufw allow 22/tcp && ufw reload
+```
+
+Потом проверить:
+
+```bash
+ssh svetneiro@155.212.135.186
+```
+
+Не проверять root-вход много раз подряд: это снова может вызвать бан.
+
+Проверка SSH после разбана:
+
+```bash
+ssh svetneiro@155.212.135.186
+```
+
+Если нужно проверить, что root отключён, делать один раз:
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=10 root@155.212.135.186
+```
+
+Ожидаемо:
+
+```text
+Permission denied (publickey).
+```
+
+После одной проверки root больше не дёргать.
+
+## 10. Coolify
+
+Coolify на этом сервере НЕ установлен.
+
+Причина:
+- n8n уже установлен через Docker Compose;
+- Supabase уже установлен через официальный Docker Compose;
+- HTTPS уже настроен через Caddy;
+- бэкапы уже настроены через cron;
+- диск 24 ГБ, свободно около 3,6 ГБ;
+- Coolify добавит лишние контейнеры, базу, proxy-слой и риск нехватки места;
+- Coolify лучше ставить на свежий сервер, а не поверх уже работающего Caddy/Docker-стека.
+
+Что у нас вместо Coolify:
+
+| Функция | Чем закрыто |
+|---|---|
+| запуск контейнеров | Docker Compose |
+| HTTPS | Caddy |
+| домены | /etc/caddy/Caddyfile |
+| автозапуск | restart policy Docker + systemd |
+| бэкапы | /opt/stack/scripts + cron |
+| управление n8n | /opt/stack/n8n/compose.yml |
+| управление Supabase | /opt/stack/supabase/docker-compose.yml |
+
+Если пользователь спрашивает "нужен ли Coolify":
+- ответ: не нужен для текущего результата;
+- сказать, что n8n и Supabase уже работают без него;
+- сказать, что формально пункт "установить Coolify" не выполнен;
+- объяснить разницу: Coolify - веб-панель деплоя, текущая схема - прямой Docker/Caddy production-стек;
+- не устанавливать Coolify без явного повторного подтверждения после предупреждения про диск.
+
+Если пользователь всё равно требует Coolify:
+1. Проверить df -h /.
+2. Предупредить о риске нехватки места.
+3. Предложить отдельный сервер или увеличение диска.
+4. Если пользователь требует "всё равно", сначала сделать backup-all.
+5. Не ломать текущий Caddy без плана портов 80/443.
+
+## 11. Если нужно обновлять
+
+Сначала:
+
+```bash
+df -h /
+sudo /opt/stack/scripts/backup-all.sh
+```
+
+Потом обновлять только по одному стеку.
+
+n8n:
+
+```bash
+cd /opt/stack/n8n
+sudo docker compose --env-file .env -f compose.yml pull
+sudo docker compose --env-file .env -f compose.yml up -d
+sudo docker compose --env-file .env -f compose.yml ps
+curl -fsS http://127.0.0.1:5678/healthz
+```
+
+Supabase:
+
+```bash
+cd /opt/stack/supabase
+sudo docker compose --env-file .env -f docker-compose.yml pull
+sudo docker compose --env-file .env -f docker-compose.yml up -d
+sudo docker compose --env-file .env -f docker-compose.yml ps
+```
+
+После обновления:
+
+```bash
+df -h /
+curl -I https://n8n1.sweevottak.pro
+curl -I https://supabase2.sweevottak.pro
+sudo ss -tulpen | grep -E ':(22|80|443|5432|6543|5678|8000|8443)\b' || true
+```
+
+## 12. Что считать ошибкой
+
+Ошибка:
+- диск занят 90% и выше;
+- любой внутренний порт слушает 0.0.0.0;
+- root SSH работает;
+- password SSH работает;
+- n8n healthz не возвращает ok;
+- Supabase db/kong/studio/auth не healthy;
+- Caddy не active;
+- HTTPS не отвечает;
+- backup-all не проходит.
+
+Если ошибка есть - сначала фиксировать вывод команд, потом исправлять.
+
+## 13. Типовые ошибки и как не повторять
+
+Ошибка: домен был записан как .rpo вместо .pro.
+Как не повторять:
+- проверять DNS через авторитетный DNS;
+- сверять домен в файле и в DNS-панели.
+
+Команды:
+
+```bash
+Resolve-DnsName -Server ns1.reg.ru -Name supabase2.sweevottak.pro -Type A
+Resolve-DnsName -Server ns1.reg.ru -Name n8n1.sweevottak.pro -Type A
+```
+
+Ошибка: DNS-запись была supabase1, а в ТЗ supabase2.
+Как не повторять:
+- имя в DNS должно точно совпадать с DOMAIN_SUPABASE.
+
+Ошибка: сервер был в Rescue-режиме.
+Как не повторять:
+- перед установкой проверять ОС:
+
+```bash
+cat /etc/os-release
+hostnamectl
+```
+
+Ожидание:
+
+```text
+Ubuntu 24.04.4 LTS
+```
+
+Ошибка: после переустановки изменился SSH host key.
+Как не повторять:
+- если сервер переустановлен, выполнить:
+
+```powershell
+ssh-keygen -R 155.212.135.186
+```
+
+Ошибка: после SSH-hardening PasswordAuthentication остался yes.
+Причина:
+- cloud-init файл в /etc/ssh/sshd_config.d мог переопределять параметры раньше.
+
+Правильная проверка:
+
+```bash
+sudo sshd -T | grep -E '^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication) '
+```
+
+Ожидание:
+
+```text
+permitrootlogin no
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+```
+
+Ошибка: sudo ругался на hostname.
+Как исправлено:
+- hostname добавлен в /etc/hosts.
+
+Проверка:
+
+```bash
+hostnamectl --static
+cat /etc/hosts
+sudo true
+```
+
+Ошибка: PowerShell портил длинные bash-команды из-за кавычек/CRLF.
+Как не повторять:
+- длинные сценарии передавать как bash script через stdin;
+- перед передачей убирать CRLF на локальной стороне;
+- не использовать `tr -d "\r"` внутри команды так, чтобы случайно удалить букву r.
+
+Ошибка: внутренние Supabase-порты 5432/6543 открылись на 0.0.0.0.
+Как не повторять:
+- после docker compose up всегда выполнять:
+
+```bash
+sudo ss -tulpen | grep -E ':(5432|6543|5678|8000|8443)\b' || true
+```
+
+Ожидание:
+- только 127.0.0.1 для 5432/6543/5678/8000/8443.
+
+Ошибка: Windows curl ругался на Schannel.
+Как не повторять:
+- финальные HTTPS-проверки выполнять с сервера через Linux curl.
+
+## 14. Итоговая логика
+
+Порядок всегда такой:
+1. Проверить SSH и диск.
+2. Сделать backup-all.
+3. Менять только один блок.
+4. Проверить docker ps.
+5. Проверить HTTPS.
+6. Проверить порты.
+7. Проверить диск.
+8. Только потом считать задачу закрытой.

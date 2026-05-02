@@ -1,0 +1,325 @@
+﻿# Простое ТЗ-шаблон для ученика: Supabase + n8n (Production)
+
+Этот файл сделан так, чтобы ученик заполнил только обязательные данные,
+а все остальное уже было зафиксировано и понятно нейросети.
+
+---
+
+## 1) Что нужно заполнить (обязательно)
+
+Заполните блок ниже и больше ничего не меняйте:
+
+PROJECT_NAME=ai_test_proba
+SERVER_PUBLIC_IP=155.212.135.186
+PRIMARY_LOGIN=root
+ADMIN_USER=svetneiro
+SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPmc9ZcD7eOEjVEw5S42W+uWEG/FqhL6oKMnGoTAT3y1 swet757@gmail.com
+DOMAIN_SUPABASE=supabase2.sweevottak.pro
+DOMAIN_N8N=n8n1.sweevottak.pro
+LETSENCRYPT_EMAIL=swet757@gmail.com
+N8N_OWNER_EMAIL=swet757@gmail.com
+N8N_OWNER_PASSWORD=!QAZwsx123#@!
+ALLOW_REBOOT=yes
+
+Подробно по каждому полю: что это и откуда брать
+
+1. PROJECT_NAME
+Что это:
+название проекта, только для удобства в отчетах.
+Где взять:
+придумать короткое имя латиницей, например ai_school_prod.
+
+2. SERVER_PUBLIC_IP
+Что это:
+публичный IP сервера в интернете.
+Где взять:
+в панели вашего хостинг-провайдера (карточка сервера, поле IPv4/Public IP).
+
+3. PRIMARY_LOGIN
+Что это:
+первичный логин, который выдал провайдер для первого входа.
+Где взять:
+из письма/панели провайдера.
+В этом шаблоне уже зафиксировано root.
+
+4. ADMIN_USER
+Что это:
+новый постоянный пользователь Linux для работы вместо root.
+Где взять:
+задаете сами, например deploy или admin.
+Требование:
+только латиница и цифры, без пробелов.
+
+5. SSH_PUBLIC_KEY
+Что это:
+публичный SSH-ключ (одна длинная строка, начинается с ssh-ed25519).
+Где взять:
+из файла id_ed25519.pub на вашем компьютере.
+Быстрые команды:
+macOS: cat ~/.ssh/id_ed25519.pub
+Windows CMD: type %USERPROFILE%\.ssh\id_ed25519.pub
+
+6. DOMAIN_SUPABASE
+Что это:
+домен (или поддомен), через который будет открываться Supabase.
+Где взять:
+в вашей DNS-панели создать A-запись на SERVER_PUBLIC_IP.
+Пример:
+supabase.example.com
+
+7. DOMAIN_N8N
+Что это:
+домен (или поддомен), через который будет открываться n8n.
+Где взять:
+в вашей DNS-панели создать A-запись на SERVER_PUBLIC_IP.
+Пример:
+n8n.example.com
+
+8. LETSENCRYPT_EMAIL
+Что это:
+email для уведомлений Let's Encrypt по SSL-сертификатам.
+Где взять:
+ваша рабочая почта, к которой есть доступ.
+
+9. N8N_OWNER_EMAIL
+Что это:
+email владельца (админа) n8n, под которым будет вход в UI.
+Где взять:
+ваш рабочий email.
+
+10. N8N_OWNER_PASSWORD
+Что это:
+первичный пароль владельца n8n.
+Где взять:
+создаете сами.
+Рекомендация:
+минимум 12 символов, большие/малые буквы, цифры и спецсимволы.
+
+11. ALLOW_REBOOT
+Что это:
+разрешение на финальную перезагрузку сервера после настройки.
+В этом шаблоне уже зафиксировано yes.
+
+Обязательная проверка перед запуском:
+1. DOMAIN_SUPABASE и DOMAIN_N8N уже указывают на SERVER_PUBLIC_IP.
+2. SSH_PUBLIC_KEY вставлен одной строкой, без переносов.
+3. Все поля в формате <...> заменены на реальные значения.
+4. Для n8n и Supabase используются конкретные теги образов, не latest.
+5. Все секреты Supabase сгенерированы заново, дефолтные значения из .env.example не оставлены.
+
+---
+
+## 2) Что уже зафиксировано в этом ТЗ (не заполняется)
+
+1. ОС: Ubuntu 24.04 LTS.
+2. Режим: только production.
+3. Таймзона: Europe/Moscow.
+4. SSH-порт: 22.
+5. Открытые порты: 22, 80, 443.
+6. Reverse proxy: Caddy.
+7. Авторизация n8n: нативная (email/password), без Caddy basicauth.
+8. SMTP: не настраивается на этом этапе.
+9. Staging: не настраивается.
+10. Бэкапы: ежедневно в 03:30, хранить 14 дней.
+11. Рабочие пути:
+- /opt/stack/n8n
+- /opt/stack/supabase
+- /opt/stack/backups
+- /opt/stack/scripts
+
+### Откуда брать установщики и версии (только официальные источники)
+
+1. Docker Engine + Docker Compose plugin
+Официальная инструкция:
+https://docs.docker.com/engine/install/ubuntu/
+
+2. Caddy
+Официальная установка на Ubuntu:
+https://caddyserver.com/docs/install#debian-ubuntu-raspbian
+
+3. n8n
+Официальные релизы:
+https://docs.n8n.io/release-notes/
+https://github.com/n8n-io/n8n/releases
+Официальный Docker-образ:
+docker.n8n.io/n8nio/n8n
+
+4. Supabase (self-hosted)
+Официальный репозиторий:
+https://github.com/supabase/supabase
+Использовать docker-папку из этого репозитория.
+
+Правило:
+не брать установочные команды из случайных блогов/видео.
+Сначала сверять шаги с официальными источниками выше.
+
+---
+
+## 3) Готовая задача для нейросети (просто вставить)
+
+Вставьте в нейросеть текст ниже (уже с заполненными значениями из раздела 1):
+
+ЗАДАЧА:
+Подготовить новый сервер Ubuntu 24.04 LTS и развернуть Supabase (self-hosted) + n8n в Docker на production.
+
+ВХОДНЫЕ ДАННЫЕ:
+PROJECT_NAME=ai_test_proba
+SERVER_PUBLIC_IP=155.212.135.186
+PRIMARY_LOGIN=root
+ADMIN_USER=svetneiro
+SSH_PUBLIC_KEY=ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPmc9ZcD7eOEjVEw5S42W+uWEG/FqhL6oKMnGoTAT3y1 swet757@gmail.com
+DOMAIN_SUPABASE=supabase2.sweevottak.pro
+DOMAIN_N8N=n8n1.sweevottak.pro
+LETSENCRYPT_EMAIL=swet757@gmail.com
+N8N_OWNER_EMAIL=swet757@gmail.com
+N8N_OWNER_PASSWORD=!QAZwsx123#@!
+ALLOW_REBOOT=yes
+
+СДЕЛАЙ ПО ЭТАПАМ:
+1. Pre-check:
+- проверить DNS для обоих доменов (что указывают на SERVER_PUBLIC_IP);
+- проверить SSH-доступ на сервер;
+- проверить, что доступны порты 22/80/443;
+- проверить и зафиксировать последние стабильные версии n8n и Supabase перед установкой.
+
+2. База ОС:
+- apt update/upgrade;
+- таймзона Europe/Moscow;
+- swap 4G.
+
+3. SSH-hardening:
+- создать ADMIN_USER и добавить в sudo;
+- добавить SSH_PUBLIC_KEY в authorized_keys;
+- проверить вход под ADMIN_USER;
+- только после проверки отключить root и password auth в sshd.
+
+4. Безопасность:
+- включить UFW (deny incoming, allow outgoing);
+- разрешить только 22, 80, 443;
+- включить fail2ban для sshd;
+- учесть, что Docker может публиковать порты в обход правил UFW;
+- после запуска проверить, что наружу доступны только 22/80/443, а сервисные порты n8n/Supabase слушают только loopback.
+
+5. Docker:
+- установить Docker Engine + Compose plugin из официального репозитория;
+- включить log rotation;
+- создать каталоги /opt/stack/... по шаблону;
+- не публиковать внутренние порты Docker на 0.0.0.0;
+- для локальных сервисов использовать bind вида 127.0.0.1:PORT:PORT.
+
+6. n8n:
+- поднять postgres + n8n в /opt/stack/n8n;
+- использовать актуальную стабильную версию n8n и зафиксировать точный тег образа;
+- bind только на 127.0.0.1:5678;
+- настроить N8N_ENCRYPTION_KEY;
+- настроить переменные для работы за reverse proxy:
+  N8N_HOST=DOMAIN_N8N
+  N8N_PROTOCOL=https
+  N8N_EDITOR_BASE_URL=https://DOMAIN_N8N/
+  WEBHOOK_URL=https://DOMAIN_N8N/
+  N8N_PROXY_HOPS=1
+- N8N_OWNER_EMAIL/N8N_OWNER_PASSWORD использовать как данные для первого владельца n8n;
+- не считать N8N_OWNER_EMAIL/N8N_OWNER_PASSWORD штатными env-переменными автосоздания owner, если текущая документация n8n это не поддерживает;
+- первого владельца создать через официальный setup UI или официальный CLI/API-способ, если он доступен в установленной версии;
+- включить N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true;
+- исправить права n8n-data при необходимости.
+
+7. Supabase:
+- развернуть docker-стек Supabase в /opt/stack/supabase;
+- использовать актуальные версии образов и зафиксировать точные теги;
+- заполнить .env production-значениями, не оставлять дефолты из .env.example;
+- сгенерировать и заменить минимум:
+  POSTGRES_PASSWORD
+  JWT_SECRET
+  ANON_KEY
+  SERVICE_ROLE_KEY
+  DASHBOARD_USERNAME
+  DASHBOARD_PASSWORD
+  SECRET_KEY_BASE
+  VAULT_ENC_KEY
+- проверить, что ANON_KEY и SERVICE_ROLE_KEY выпущены от текущего JWT_SECRET;
+- ограничить публикацию внутренних портов loopback там, где нужно;
+- поднять стек.
+
+8. HTTPS:
+- установить Caddy;
+- настроить прокси:
+  DOMAIN_SUPABASE -> 127.0.0.1:8000 (Supabase gateway/Studio)
+  DOMAIN_N8N -> 127.0.0.1:5678
+- получить TLS автоматически;
+- Caddy basicauth для n8n не включать.
+
+9. Бэкапы:
+- сделать скрипты backup-n8n.sh, backup-supabase.sh, backup-all.sh;
+- cron в 03:30 по Europe/Moscow;
+- хранить 14 дней.
+
+10. Финал:
+- выполнить reboot;
+- после reboot проверить автоподъем сервисов.
+
+ОЖИДАЕМЫЙ ВЫХОД ОТ НЕЙРОСЕТИ:
+1. Короткий лог по этапам 1-10.
+2. Список созданных/измененных файлов конфигурации.
+3. Итог проверок (SSH, HTTPS, docker ps, backup).
+4. Точные версии n8n и Supabase, которые были установлены.
+5. Список ошибок (если были) и что исправлено.
+6. Подтверждение, что открыты только порты 22/80/443, а 5678/8000 не доступны извне.
+7. Подтверждение, что в Supabase .env нет дефолтных секретов из .env.example.
+
+---
+
+## 4) Быстрая проверка результата (для ученика)
+
+После выполнения должны работать проверки:
+
+1. Вход под админом по ключу:
+ssh svetneiro@155.212.135.186
+
+2. Вход root должен быть отключен (ожидается отказ):
+ssh root@155.212.135.186
+
+3. HTTPS Supabase:
+curl -I https://supabase2.sweevottak.pro
+
+4. HTTPS n8n:
+curl -I https://n8n1.sweevottak.pro
+
+5. Контейнеры запущены:
+sudo docker ps
+
+6. Проверка открытых портов на сервере:
+sudo ss -tulpen
+
+Ожидается:
+- 22/80/443 доступны публично;
+- 5678 и 8000 слушают только 127.0.0.1.
+
+7. Бэкап запускается вручную:
+sudo /opt/stack/scripts/backup-all.sh
+
+Если все пункты проходят, работа выполнена.
+
+---
+
+## 5) Частые проблемы и что делать
+
+1. Сертификат не выдается
+Проверьте, что DOMAIN_SUPABASE и DOMAIN_N8N реально смотрят на SERVER_PUBLIC_IP.
+
+2. Потеряли SSH-доступ
+Значит root/password отключили раньше проверки входа под ADMIN_USER.
+
+3. n8n не пускает в UI
+Проверить правильный домен, режим инкогнито, автозаполнение пароля, затем проверить login API.
+
+4. Контейнер n8n падает по правам
+Проверить владельца volume n8n-data и выставить корректные права.
+
+5. Бэкап не создается
+Проверить cron, права на /opt/stack/scripts и путь /opt/stack/backups.
+
+6. Порты n8n/Supabase видны извне
+Проверить секцию ports в docker-compose.yml.
+Исправить публикацию с PORT:PORT на 127.0.0.1:PORT:PORT и перезапустить стек.
+
