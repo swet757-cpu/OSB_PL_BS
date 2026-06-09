@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+
+# Real accounting source files and generated reports are not published.
+01_ОСВ_входящие/*
+02_Готовые_отчеты/*
+
+# Keep folder structure in git.
+!01_ОСВ_входящие/.gitkeep
+!02_Готовые_отчеты/.gitkeep
+
+# Local Excel lock files.
+~$*.xlsx
+~$*.xlsm
+~$*.docx
+
+# Empty placeholder from the workspace.
+Источник информации .docx
