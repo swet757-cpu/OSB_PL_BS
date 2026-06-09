@@ -22,6 +22,15 @@ if (-not $changes) {
 }
 
 git commit -m $Message
-git push
+
+$upstream = git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>$null
+if ($upstream) {
+    $parts = $upstream -split "/", 2
+    $remote = $parts[0]
+    $remoteBranch = $parts[1]
+    git push $remote "HEAD:$remoteBranch"
+} else {
+    git push -u origin $branch
+}
 
 Write-Host "Готово: изменения сохранены на GitHub из ветки $branch."
